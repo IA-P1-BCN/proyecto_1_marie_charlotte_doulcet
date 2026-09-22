@@ -1,5 +1,8 @@
 import unittest
-from taximetro.main import toggle_state
+from taximetro.main import toggle_state, main
+import io
+from contextlib import redirect_stdout
+from unittest.mock import patch
 
 class TestToogleState(unittest.TestCase):
     def setUp(self):
@@ -32,10 +35,26 @@ class TestToogleState(unittest.TestCase):
         )
         self.assertEqual(state, "stopped")
         self.assertEqual(start_timestamp, 1010.0)
-        self.assertAlmostEqual(total, 0.5)  # 10s en mouvement * 0.05
+        self.assertAlmostEqual(total, 0.5)  
+
+class TestMainLoop(unittest.TestCase):
+    @patch("builtins.input", side_effect=["F"])
+    def test_f_without_active_ride_prints_warning(self, mock_input):
+        output = io.StringIO()
+        with self.assertRaises(StopIteration):
+            with redirect_stdout(output):
+                main()
+        self.assertIn("No hay una carrera en curso", output.getvalue())
+
+    @patch("taximetro.main.time.time", side_effect=[1000.0, 1010.0])
+    @patch("builtins.input", side_effect=["N", "F"])
+    def test_n_and_f_creates_and_finalizes_ride(self, mock_input, mock_time):
+        output = io.StringIO()
+        with self.assertRaises(StopIteration):
+            with redirect_stdout(output):
+                main()
+        self.assertIn("Carrera finalizada. Total a pagar: 0.20", output.getvalue())
 
 if __name__ == '__main__':
     unittest.main()
 
-
-                    

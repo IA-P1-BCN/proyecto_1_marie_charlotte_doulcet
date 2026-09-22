@@ -1,5 +1,5 @@
 import time 
-from taximetro.pricing import calculate_segment
+from taximetro.pricing import calculate_segment, format_amount
 
 RATES = {"stopped_rate": 0.02, "moving_rate": 0.05}
 
@@ -7,10 +7,12 @@ MENU = """
 ========== TAXIMETRO =========
 N - Iniciar carrera
 M - Cambiar a en movimiento
-P - Cambiar a parado"""
+P - Cambiar a parado
+F - Finalizar carrera
+Ingrese un comando:"""
 
 def toggle_state(command, state, start_timestamp, total, rates, now=None):
-    new_state = {"M": "moving", "P": "stopped"}[command]
+    new_state = {"M" : "moving", "P": "stopped"}[command]
     if new_state == state:
         return state, start_timestamp, total
 
@@ -50,6 +52,19 @@ def main():
             )
             estado_es = "en movimiento" if state == "moving" else "parado"
             print(f"Estado cambiado a: {estado_es}.")
+
+        elif command == "F":
+            if not ride_active:
+                print("No hay una carrera en curso. Inicie una carrera primero.")
+                continue
+
+            now = time.time()
+            total += calculate_segment(state, now - start_timestamp, RATES)
+            ride_active = False
+            print(f"Carrera finalizada. Total a pagar: {format_amount(total)} €")
+            state = None
+            start_timestamp = None
+            total = 0.0
 
         else:
             print("Comando no reconocido. Intente de nuevo.")
