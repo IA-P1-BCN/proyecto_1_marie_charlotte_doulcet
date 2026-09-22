@@ -6,4 +6,3 @@ def calculate_segment(state, duration_seconds, rates):
     else:
         raise ValueError(f"Unknown state: {state}")
     return duration_seconds * rate 
-  
