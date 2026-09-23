@@ -1,5 +1,7 @@
 import time 
+from datetime import date
 from taximetro.pricing import calculate_segment, format_amount
+from taximetro.history import append_ride, load_today_rides
 
 RATES = {"stopped_rate": 0.02, "moving_rate": 0.05}
 
@@ -9,6 +11,7 @@ N - Iniciar carrera
 M - Cambiar a en movimiento
 P - Cambiar a parado
 F - Finalizar carrera
+H - Ver historial de hoy
 Q - Salir
 Ingrese un comando:"""
 
@@ -26,6 +29,7 @@ def main():
     ride_active = False 
     state = None
     start_timestamp = None
+    ride_start_timestamp = None
     total = 0.0
 
     while True:
@@ -40,6 +44,7 @@ def main():
             ride_active = True
             state = "stopped"
             start_timestamp = time.time()
+            ride_start_timestamp = start_timestamp
             total = 0.0
             print("Carrera iniciada. Estado: parado.")
 
@@ -61,10 +66,17 @@ def main():
 
             now = time.time()
             total += calculate_segment(state, now - start_timestamp, RATES)
+            duration_seconds = round(now - ride_start_timestamp)
             ride_active = False
             print(f"Carrera finalizada. Total a pagar: {format_amount(total)} €")
+            append_ride({
+                "date": date.today().isoformat(),
+                "duration_seconds": str(duration_seconds),
+                "amount": format_amount(total)
+            })
             state = None
             start_timestamp = None
+            ride_start_timestamp = None
             total = 0.0
 
         elif command == "Q":
@@ -75,6 +87,14 @@ def main():
             print("Saliendo del taxímetro. ¡Hasta luego!")
             return
 
+        elif command == "H":
+            rides = load_today_rides()
+            if not rides:
+                print("No hay carreras registradas para hoy.")
+            else:
+                print("Historial de carreras de hoy:")
+                for ride in rides:
+                    print(f"Fecha: {ride['date']}, Duración: {ride['duration_seconds']} segundos, Monto: {ride['amount']} €")
         else:
             print("Comando no reconocido. Intente de nuevo.")
 
