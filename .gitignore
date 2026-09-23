@@ -1,0 +1,6 @@
+back/.venv/
+__pycache__/
+*.pyc
+
+back/taximetro.log
+back/rides_history.csv
