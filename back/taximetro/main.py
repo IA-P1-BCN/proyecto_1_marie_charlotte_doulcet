@@ -1,5 +1,5 @@
 import time 
-from pricing import calculate_segment, format_amount
+from taximetro.pricing import calculate_segment, format_amount
 
 RATES = {"stopped_rate": 0.02, "moving_rate": 0.05}
 
