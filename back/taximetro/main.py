@@ -1,5 +1,5 @@
 import time 
-from taximetro.pricing import calculate_segment, format_amount
+from pricing import calculate_segment, format_amount
 
 RATES = {"stopped_rate": 0.02, "moving_rate": 0.05}
 
@@ -71,7 +71,7 @@ def main():
             if ride_active:
                 print("Finalice carrera antes de salir...")
                 continue
-            
+
             print("Saliendo del taxímetro. ¡Hasta luego!")
             return
 
