@@ -9,6 +9,7 @@ N - Iniciar carrera
 M - Cambiar a en movimiento
 P - Cambiar a parado
 F - Finalizar carrera
+Q - Salir
 Ingrese un comando:"""
 
 def toggle_state(command, state, start_timestamp, total, rates, now=None):
@@ -65,6 +66,14 @@ def main():
             state = None
             start_timestamp = None
             total = 0.0
+
+        elif command == "Q":
+            if ride_active:
+                print("Finalice carrera antes de salir...")
+                continue
+            
+            print("Saliendo del taxímetro. ¡Hasta luego!")
+            return
 
         else:
             print("Comando no reconocido. Intente de nuevo.")
