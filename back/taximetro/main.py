@@ -4,8 +4,7 @@ from datetime import date
 from taximetro.pricing import calculate_segment, format_amount
 from taximetro.history import append_ride, load_today_rides
 from taximetro.logging_setup import configure_logging
-
-RATES = {"stopped_rate": 0.02, "moving_rate": 0.05}
+from taximetro.rates_config import load_rates, save_rates
 
 MENU = """
 ========== TAXIMETRO =========
@@ -14,6 +13,7 @@ M - Cambiar a en movimiento
 P - Cambiar a parado
 F - Finalizar carrera
 H - Ver historial de hoy
+T - Cambiar tarifa
 Q - Salir
 Ingrese un comando:"""
 
@@ -30,6 +30,14 @@ def toggle_state(command, state, start_timestamp, total, rates, now=None):
 def main():
     configure_logging()
     logging.info("Taximetro started")
+
+    try:
+        rates = load_rates()
+    except ValueError:
+        logging.exception("Failed to load rate configuration")
+        print("No se pudo cargar la configuración de tarifas. Revise config.ini.")
+        return
+    
     ride_active = False 
     state = None
     start_timestamp = None
@@ -59,7 +67,7 @@ def main():
                     continue
 
                 state, start_timestamp, total = toggle_state(
-                    command, state, start_timestamp, total, RATES
+                    command, state, start_timestamp, total, rates
                 )
                 logging.info("State changed to %s", state)
                 estado_es = "en movimiento" if state == "moving" else "parado"
@@ -71,7 +79,7 @@ def main():
                     continue
 
                 now = time.time()
-                total += calculate_segment(state, now - start_timestamp, RATES)
+                total += calculate_segment(state, now - start_timestamp, rates)
                 duration_seconds = round(now - ride_start_timestamp)
                 ride_active = False
                 logging.info("Ride ended, duration=%ss, total=%s", duration_seconds, format_amount(total))
@@ -85,6 +93,27 @@ def main():
                 start_timestamp = None
                 ride_start_timestamp = None
                 total = 0.0
+
+            elif command == "T":
+                tarifa_input = input("¿Qué tarifa? (P = parado, M = en movimiento): ").strip().upper()
+                if tarifa_input not in ("P", "M"):
+                    print("Opción no válida. Use P o M.")
+                    continue
+
+                rate_key = "stopped_rate" if tarifa_input == "P" else "moving_rate"
+                new_value_input = input(f"Nuevo valor para {rate_key} (€/segundo): ").strip()
+
+                try:
+                    new_value = float(new_value_input)
+                    updated_rates = {**rates, rate_key: new_value}
+                    save_rates(updated_rates)
+                except ValueError as e:
+                    print("Valor no válido. Debe ser un número positivo. La tarifa actual no ha cambiado.")
+                    continue
+
+                rates = updated_rates
+                logging.info("Rate changed: %s = %s", rate_key, new_value)
+                print(f"Tarifa actualizada: {rate_key} = {new_value} €/segundo")
 
             elif command == "Q":
                 if ride_active:
