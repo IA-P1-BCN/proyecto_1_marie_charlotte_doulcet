@@ -3,7 +3,7 @@ import logging
 import os
 import tempfile
 
-from taximetro.logging_setup import configure_logging
+from taximetro.infrastructure.logging_setup import configure_logging
 
 class TestConfigureLogging(unittest.TestCase):
     def setUp(self):

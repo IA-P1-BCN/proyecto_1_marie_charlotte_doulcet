@@ -1,10 +1,9 @@
-import time 
+import time
 import logging
-from datetime import date
-from taximetro.pricing import calculate_segment, format_amount
-from taximetro.history import append_ride, load_today_rides
-from taximetro.logging_setup import configure_logging
-from taximetro.rates_config import load_rates, save_rates
+from taximetro.domain.ride import Ride
+from taximetro.infrastructure.storage.file_storage import FileStorage
+from taximetro.infrastructure.logging_setup import configure_logging
+from taximetro.infrastructure.rates_config import load_rates, save_rates
 
 MENU = """
 ========== TAXIMETRO =========
@@ -17,16 +16,6 @@ T - Cambiar tarifa
 Q - Salir
 Ingrese un comando:"""
 
-def toggle_state(command, state, start_timestamp, total, rates, now=None):
-    new_state = {"M" : "moving", "P": "stopped"}[command]
-    if new_state == state:
-        return state, start_timestamp, total
-
-    now = now if now is not None else time.time()
-    elapsed = now - start_timestamp
-    total += calculate_segment(state, elapsed, rates)
-    return new_state, now, total
-
 def main():
     configure_logging()
     logging.info("Taximetro started")
@@ -37,12 +26,9 @@ def main():
         logging.exception("Failed to load rate configuration")
         print("No se pudo cargar la configuración de tarifas. Revise config.ini.")
         return
-    
-    ride_active = False 
-    state = None
-    start_timestamp = None
-    ride_start_timestamp = None
-    total = 0.0
+
+    storage = FileStorage()
+    current_ride = None
 
     while True:
         print(MENU)
@@ -50,49 +36,36 @@ def main():
 
         try:
             if command == "N":
-                if ride_active:
-                    print("Ya hay una carrera en curso.") 
-                    continue 
+                if current_ride is not None:
+                    print("Ya hay una carrera en curso.")
+                    continue
 
-                ride_active = True
-                state = "stopped"
-                start_timestamp = time.time()
-                ride_start_timestamp = start_timestamp
-                total = 0.0
+                current_ride = Ride(rates)
                 print("Carrera iniciada. Estado: parado.")
 
             elif command in ["M", "P"]:
-                if not ride_active:
+                if current_ride is None:
                     print("No hay una carrera en curso. Inicie una carrera primero.")
                     continue
 
-                state, start_timestamp, total = toggle_state(
-                    command, state, start_timestamp, total, rates
-                )
-                logging.info("State changed to %s", state)
-                estado_es = "en movimiento" if state == "moving" else "parado"
+                new_state = {"M": "moving", "P": "stopped"}[command]
+                current_ride.toggle_state(new_state)
+                logging.info("State changed to %s", new_state)
+                estado_es = "en movimiento" if new_state == "moving" else "parado"
                 print(f"Estado cambiado a: {estado_es}.")
 
             elif command == "F":
-                if not ride_active:
+                if current_ride is None:
                     print("No hay una carrera en curso. Inicie una carrera primero.")
                     continue
 
-                now = time.time()
-                total += calculate_segment(state, now - start_timestamp, rates)
-                duration_seconds = round(now - ride_start_timestamp)
-                ride_active = False
-                logging.info("Ride ended, duration=%ss, total=%s", duration_seconds, format_amount(total))
-                print(f"Carrera finalizada. Total a pagar: {format_amount(total)} €")
-                append_ride({
-                    "date": date.today().isoformat(),
-                    "duration_seconds": str(duration_seconds),
-                    "amount": format_amount(total)
-                })
-                state = None
-                start_timestamp = None
-                ride_start_timestamp = None
-                total = 0.0
+                total = current_ride.end()
+                duration_seconds = current_ride.get_duration_seconds()
+                logging.info("Ride ended, duration=%ss, total=%s", duration_seconds, current_ride.format_total())
+                print(f"Carrera finalizada. Total a pagar: {current_ride.format_total()} €")
+
+                storage.save_ride(current_ride)
+                current_ride = None
 
             elif command == "T":
                 tarifa_input = input("¿Qué tarifa? (P = parado, M = en movimiento): ").strip().upper()
@@ -107,7 +80,7 @@ def main():
                     new_value = float(new_value_input)
                     updated_rates = {**rates, rate_key: new_value}
                     save_rates(updated_rates)
-                except ValueError as e:
+                except ValueError:
                     print("Valor no válido. Debe ser un número positivo. La tarifa actual no ha cambiado.")
                     continue
 
@@ -116,7 +89,7 @@ def main():
                 print(f"Tarifa actualizada: {rate_key} = {new_value} €/segundo")
 
             elif command == "Q":
-                if ride_active:
+                if current_ride is not None:
                     print("Finalice carrera antes de salir...")
                     continue
 
@@ -124,13 +97,13 @@ def main():
                 return
 
             elif command == "H":
-                rides = load_today_rides()
+                rides = storage.load_today()
                 if not rides:
                     print("No hay carreras registradas para hoy.")
                 else:
                     print("Historial de carreras de hoy:")
                     for ride in rides:
-                        print(f"Fecha: {ride['date']}, Duración: {ride['duration_seconds']} segundos, Monto: {ride['amount']} €")
+                        print(f"Duración: {ride.get_duration_seconds()} segundos, Monto: {ride.format_total()} €")
             else:
                 print("Comando no reconocido. Intente de nuevo.")
         except Exception:
