@@ -2,7 +2,7 @@ import unittest
 import os
 import tempfile
 
-from taximetro.rates_config import load_rates, save_rates
+from taximetro.infrastructure.rates_config import load_rates, save_rates
 
 class TestRatesConfig(unittest.TestCase):
     def setUp(self):
