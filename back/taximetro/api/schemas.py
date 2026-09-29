@@ -15,8 +15,8 @@ class CredentialsRequest(BaseModel):
 
 
 class RatesRequest(BaseModel):
-    stopped_rate: float = Field(gt=0)
-    moving_rate: float = Field(gt=0)
+    stopped_rate: float = Field(gt=0, allow_inf_nan=False)
+    moving_rate: float = Field(gt=0, allow_inf_nan=False)
 
 
 class RatesDTO(BaseModel):
