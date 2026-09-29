@@ -9,7 +9,7 @@
 ![React](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![MUI](https://img.shields.io/badge/MUI-007FFF?style=for-the-badge&logo=mui&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-132%20passing-43A047?style=for-the-badge&logo=checkmarx&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-133%20passing-43A047?style=for-the-badge&logo=checkmarx&logoColor=white)
 ![Status](https://img.shields.io/badge/status-prototype-F2B705?style=for-the-badge&logoColor=black)
 
 [📖 Overview](#-overview) • [🚀 Getting started](#-getting-started) • [🧪 Tests](#-running-the-tests) • [🔌 API](#-api) • [🧱 Architecture](#-architecture) • [🧭 Key decisions](#-key-decisions)
@@ -80,7 +80,7 @@ Then open http://localhost:5173. On the first visit you register a company name 
 ## 🧪 Running the tests
 
 ```bash
-# Backend: unittest (stdlib), 89 tests
+# Backend: unittest (stdlib), 90 tests
 cd back && source .venv/bin/activate
 python -m unittest discover -s tests
 
