@@ -32,8 +32,20 @@ class TestCliLoop(unittest.TestCase):
             try:
                 main()
             except StopIteration:
-                pass 
+                pass
         self.assertIn("No hay una carrera en curso", output.getvalue())
+
+    @patch("taximetro.cli.save_password_hash")
+    @patch("taximetro.cli.hash_password", return_value="salt$digest")
+    @patch("taximetro.cli.getpass.getpass", side_effect=["secreto123", "wrong", "secreto123", "secreto123"])
+    @patch("taximetro.cli.is_password_set", return_value=False)
+    def test_require_password_first_run_retries_on_mismatched_confirmation(self, mock_is_set, mock_getpass, mock_hash, mock_save):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            require_password()
+        self.assertIn("no coinciden", output.getvalue())
+        mock_hash.assert_called_once_with("secreto123")
+        mock_save.assert_called_once_with("salt$digest")
 
 if __name__ == '__main__':
     unittest.main()
