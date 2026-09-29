@@ -1,24 +1,22 @@
 import unittest
-import os
-from unittest.mock import patch
 from fastapi.testclient import TestClient
-from taximetro.api import app, get_session, require_auth
-from taximetro.ride_session import RideSession
-from taximetro.infrastructure.storage.db_storage import DbStorage
+from taximetro.api import app
+from taximetro.api.dependencies import get_ride_service, require_auth
+from taximetro.application.ride_service import RideService
+from taximetro.domain.rates import Rates
+from tests.fakes import InMemoryRatesRepository, InMemoryRideRepository
+
 
 class TestApi(unittest.TestCase):
     def setUp(self):
-        self.test_db = "test_api.db"
-        rates = {"stopped_rate": 0.02, "moving_rate": 0.05}
-        self.session = RideSession(rates, DbStorage(self.test_db))
-        app.dependency_overrides[get_session] = lambda: self.session
+        self.rates_repository = InMemoryRatesRepository(Rates(stopped_rate=0.02, moving_rate=0.05))
+        self.session = RideService(self.rates_repository, InMemoryRideRepository())
+        app.dependency_overrides[get_ride_service] = lambda: self.session
         app.dependency_overrides[require_auth] = lambda: None
         self.client = TestClient(app)
 
     def tearDown(self):
         app.dependency_overrides.clear()
-        if os.path.exists(self.test_db):
-            os.remove(self.test_db)
 
     def test_start_state_end_happy_path(self):
         start_response = self.client.post("/api/ride/start")
@@ -33,7 +31,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(end_response.status_code, 200)
         body = end_response.json()
         self.assertIn("id", body)
-        self.assertAlmostEqual(body["amount"], self.session.storage.load_today()[0].accumulated)
+        self.assertAlmostEqual(body["amount"], self.session.get_ride(body["id"]).amount)
 
     def test_start_twice_returns_409(self):
         self.client.post("/api/ride/start")
@@ -60,22 +58,33 @@ class TestApi(unittest.TestCase):
         self.assertEqual(response.json(), {"stopped_rate": 0.02, "moving_rate": 0.05})
 
     def test_put_rates_updates_session_and_persists(self):
-        with patch("taximetro.ride_session.save_rates") as save:
-            response = self.client.put("/api/rates", json={"stopped_rate": 0.03, "moving_rate": 0.06})
+        response = self.client.put("/api/rates", json={"stopped_rate": 0.03, "moving_rate": 0.06})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.session.rates, {"stopped_rate": 0.03, "moving_rate": 0.06})
-        self.assertTrue(save.called)
+        self.assertEqual(response.json(), {"stopped_rate": 0.03, "moving_rate": 0.06})
+        self.assertEqual(self.session.rates, Rates(stopped_rate=0.03, moving_rate=0.06))
+        self.assertEqual(self.rates_repository.saved, [Rates(stopped_rate=0.03, moving_rate=0.06)])
 
     def test_put_rates_rejects_non_positive(self):
-        with patch("taximetro.ride_session.save_rates"):
-            response = self.client.put("/api/rates", json={"stopped_rate": 0, "moving_rate": 0.06})
+        response = self.client.put("/api/rates", json={"stopped_rate": 0, "moving_rate": 0.06})
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.rates_repository.saved, [])
 
     def test_start_with_custom_rates_applies_to_that_ride_only(self):
         response = self.client.post("/api/ride/start", json={"stopped_rate": 0.1, "moving_rate": 0.2})
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["current_rate"], 0.1)
-        self.assertEqual(self.session.rates, {"stopped_rate": 0.02, "moving_rate": 0.05})
+        self.assertEqual(self.session.rates, Rates(stopped_rate=0.02, moving_rate=0.05))
+
+    def test_end_ride_then_history_and_detail_endpoints_return_the_record(self):
+        self.client.post("/api/ride/start")
+        ended = self.client.post("/api/ride/end").json()
+
+        self.assertEqual(self.client.get("/api/rides").json(), [ended])
+        self.assertEqual(self.client.get(f"/api/rides/{ended['id']}").json(), ended)
+        self.assertEqual(self.client.get("/api/rides/999").status_code, 404)
+
+    def test_rides_with_an_invalid_date_returns_422(self):
+        self.assertEqual(self.client.get("/api/rides?date=not-a-date").status_code, 422)
 
     def test_start_with_invalid_rates_returns_422(self):
         response = self.client.post("/api/ride/start", json={"stopped_rate": -1, "moving_rate": 0.2})
