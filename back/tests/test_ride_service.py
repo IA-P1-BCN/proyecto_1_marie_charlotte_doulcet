@@ -1,20 +1,20 @@
-import os
-import tempfile
 import unittest
-from unittest.mock import patch
 from taximetro.domain.errors import NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
 from taximetro.domain.rates import Rates
 from taximetro.domain.ride_record import RideRecord
 from taximetro.domain.ride_state import RideState
-from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
-from taximetro.ride_session import RideSession
+from taximetro.application.ride_service import RideService
+from tests.fakes import InMemoryRatesRepository, InMemoryRideRepository
 
 
-class TestRideSession(unittest.TestCase):
+class TestRideService(unittest.TestCase):
     def setUp(self):
         self.rates = Rates(stopped_rate=0.02, moving_rate=0.05)
-        self.repository = SqliteRideRepository(os.path.join(tempfile.mkdtemp(), "test.db"))
-        self.session = RideSession(self.rates, self.repository)
+        self.rates_repository = InMemoryRatesRepository(self.rates)
+        self.session = RideService(self.rates_repository, InMemoryRideRepository())
+
+    def test_rates_are_loaded_from_the_repository(self):
+        self.assertEqual(self.session.rates, self.rates)
 
     def test_start_ride_with_custom_rates_leaves_defaults_untouched(self):
         custom = Rates(stopped_rate=0.1, moving_rate=0.2)
@@ -63,19 +63,17 @@ class TestRideSession(unittest.TestCase):
         self.assertEqual(self.session.get_ride(record.id), record)
         self.assertIsNone(self.session.get_ride(999))
 
-    @patch("taximetro.ride_session.save_rates")
-    def test_change_rate_updates_rates_and_persists(self, mock_save_rates):
+    def test_change_rate_updates_rates_and_persists(self):
         self.session.change_rate("moving_rate", 0.1)
         expected = Rates(stopped_rate=0.02, moving_rate=0.1)
         self.assertEqual(self.session.rates, expected)
-        mock_save_rates.assert_called_once_with(expected)
+        self.assertEqual(self.rates_repository.saved, [expected])
 
-    @patch("taximetro.ride_session.save_rates")
-    def test_set_rates_replaces_both_rates_and_persists_once(self, mock_save_rates):
+    def test_set_rates_replaces_both_rates_and_persists_once(self):
         new_rates = Rates(stopped_rate=0.03, moving_rate=0.06)
         self.session.set_rates(new_rates)
         self.assertEqual(self.session.rates, new_rates)
-        mock_save_rates.assert_called_once_with(new_rates)
+        self.assertEqual(self.rates_repository.saved, [new_rates])
 
 if __name__ == '__main__':
     unittest.main()

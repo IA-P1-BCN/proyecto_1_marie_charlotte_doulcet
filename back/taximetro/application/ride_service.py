@@ -1,13 +1,15 @@
 from datetime import date
 from taximetro.domain.errors import AlreadyInStateError, NoActiveRideError, RideAlreadyActiveError
 from taximetro.domain.ride import Ride
-from taximetro.infrastructure.rates_config import save_rates
 
 
-class RideSession:
-    def __init__(self, rates, repository):
-        self.rates = rates
-        self.repository = repository
+class RideService:
+    """Use cases around the single ride in progress, the default rates and the ride history."""
+
+    def __init__(self, rates_repository, ride_repository):
+        self._rates_repository = rates_repository
+        self._ride_repository = ride_repository
+        self.rates = rates_repository.load()
         self.current_ride = None
 
     @property
@@ -32,7 +34,7 @@ class RideSession:
             raise NoActiveRideError()
         ride = self.current_ride
         ride.end()
-        record = self.repository.save(ride)
+        record = self._ride_repository.save(ride)
         self.current_ride = None
         return record
 
@@ -40,14 +42,14 @@ class RideSession:
         self.set_rates(self.rates.with_rate(rate_key, new_value))
 
     def set_rates(self, rates):
-        save_rates(rates)
+        self._rates_repository.save(rates)
         self.rates = rates
 
     def get_today_history(self):
-        return self.repository.find_by_date(date.today())
+        return self.get_history(date.today())
 
     def get_history(self, day):
-        return self.repository.find_by_date(day)
+        return self._ride_repository.find_by_date(day)
 
     def get_ride(self, ride_id):
-        return self.repository.find_by_id(ride_id)
+        return self._ride_repository.find_by_id(ride_id)
