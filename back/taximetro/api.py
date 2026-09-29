@@ -1,6 +1,8 @@
 from datetime import datetime, date as date_cls
+from pathlib import Path
 from typing import Literal
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from taximetro.infrastructure.rates_config import load_rates
 from taximetro.infrastructure.storage.db_storage import DbStorage
@@ -80,3 +82,9 @@ def get_ride(ride_id: int, session: RideSession = Depends(get_session)):
     if row is None:
         raise HTTPException(status_code=404, detail="Ride not found")
     return _row_to_ride_dto(row)
+
+# Prod only: serve the React build. Mounted last so it never shadows /api routes.
+# Skipped if front/dist doesn't exist, so `uvicorn --reload` still works during frontend dev.
+_dist_dir = Path(__file__).resolve().parent.parent.parent / "front" / "dist"
+if _dist_dir.is_dir():
+    app.mount("/", StaticFiles(directory=_dist_dir, html=True), name="web-panel")
