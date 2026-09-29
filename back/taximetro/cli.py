@@ -1,10 +1,11 @@
 import logging
 import getpass
-from taximetro.infrastructure.storage.file_storage import FileStorage
+from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
 from taximetro.infrastructure.logging_setup import configure_logging
 from taximetro.infrastructure.rates_config import load_rates
 from taximetro.infrastructure.auth import (hash_password, check_password, is_password_set, save_password_hash, load_password_hash,)
-from taximetro.ride_session import RideSession, NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
+from taximetro.domain.errors import AlreadyInStateError, NoActiveRideError, RideAlreadyActiveError
+from taximetro.ride_session import RideSession
 
 MENU = """
 ========== TAXIMETRO =========
@@ -77,7 +78,7 @@ def main():
         print("No se pudo cargar la configuración de tarifas. Revise config.ini.")
         return
 
-    session = RideSession(rates, FileStorage())
+    session = RideSession(rates, SqliteRideRepository())
 
     while True:
         print(MENU)
@@ -103,9 +104,9 @@ def main():
 
             elif command == "F":
                 try:
-                    ride = session.end_ride()
-                    logging.info("Ride ended, duration=%ss, total=%s", ride.get_duration_seconds(), ride.format_total())
-                    print(f"Carrera finalizada. Total a pagar: {ride.format_total()} €")
+                    record = session.end_ride()
+                    logging.info("Ride ended, duration=%ss, total=%.2f", round(record.duration_seconds), record.amount)
+                    print(f"Carrera finalizada. Total a pagar: {record.amount:.2f} €")
                 except NoActiveRideError:
                     print("No hay una carrera en curso. Inicie una carrera primero.")
 
@@ -142,8 +143,8 @@ def main():
                     print("No hay carreras registradas para hoy.")
                 else:
                     print("Historial de carreras de hoy:")
-                    for ride in rides:
-                        print(f"Duración: {ride.get_duration_seconds()} segundos, Monto: {ride.format_total()} €")
+                    for record in rides:
+                        print(f"Duración: {round(record.duration_seconds)} segundos, Monto: {record.amount:.2f} €")
             else:
                 print("Comando no reconocido. Intente de nuevo.")
         except Exception:

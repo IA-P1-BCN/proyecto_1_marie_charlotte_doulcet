@@ -2,6 +2,7 @@ import unittest
 import os
 import tempfile
 
+from taximetro.domain.rates import Rates
 from taximetro.infrastructure.rates_config import load_rates, save_rates
 
 class TestRatesConfig(unittest.TestCase):
@@ -16,7 +17,7 @@ class TestRatesConfig(unittest.TestCase):
     def test_load_rates_returns_expected_keys(self):
         self._write_config("[rates]\nstopped_rate = 0.02\nmoving_rate = 0.05\n")
         rates = load_rates(self.config_path)
-        self.assertEqual(rates, {"stopped_rate": 0.02, "moving_rate": 0.05})
+        self.assertEqual(rates, Rates(stopped_rate=0.02, moving_rate=0.05))
 
     def test_missing_key_raises_clear_error(self):
         self._write_config("[rates]\nstopped_rate = 0.02\n")
@@ -25,15 +26,15 @@ class TestRatesConfig(unittest.TestCase):
 
     def test_save_rates_persists_new_values_to_file(self):
         self._write_config("[rates]\nstopped_rate = 0.02\nmoving_rate = 0.05\n")
-        save_rates({"stopped_rate": 0.03, "moving_rate": 0.05}, self.config_path)
+        save_rates(Rates(stopped_rate=0.03, moving_rate=0.05), self.config_path)
 
         reloaded = load_rates(self.config_path)
-        self.assertEqual(reloaded, {"stopped_rate": 0.03, "moving_rate": 0.05})
+        self.assertEqual(reloaded, Rates(stopped_rate=0.03, moving_rate=0.05))
 
-    def test_save_rates_rejects_negative_or_zero(self):
-        self._write_config("[rates]\nstopped_rate = 0.02\nmoving_rate = 0.05\n")
+    def test_load_rates_rejects_non_positive_values(self):
+        self._write_config("[rates]\nstopped_rate = -1\nmoving_rate = 0.05\n")
         with self.assertRaises(ValueError):
-            save_rates({"stopped_rate": -1, "moving_rate": 0.05}, self.config_path)
+            load_rates(self.config_path)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from datetime import datetime, date as date_cls
+from datetime import date as date_cls, datetime
 from pathlib import Path
 from typing import Literal
 import time
@@ -8,8 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from taximetro.infrastructure.auth import hash_password, check_password, is_registered, save_account, load_password_hash, check_company
 from taximetro.infrastructure.rates_config import load_rates
-from taximetro.infrastructure.storage.db_storage import DbStorage
-from taximetro.ride_session import RideSession, NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
+from taximetro.domain.errors import AlreadyInStateError, NoActiveRideError, RideAlreadyActiveError
+from taximetro.domain.rates import Rates
+from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
+from taximetro.ride_session import RideSession
 
 app = FastAPI(title="Taximetro API")
 
@@ -26,7 +28,7 @@ protected = APIRouter(dependencies=[Depends(require_auth)])
 def get_session():
     global _session
     if _session is None:
-        _session = RideSession(load_rates(), DbStorage())
+        _session = RideSession(load_rates(), SqliteRideRepository())
     return _session
 
 class ChangeStateRequest(BaseModel):
@@ -51,22 +53,22 @@ def _active_ride_dto(ride):
         "started_at": datetime.fromtimestamp(ride.started_at).isoformat(),
         "amount_so_far": round(ride.get_total(), 2),
         "elapsed_seconds": round(time.time() - ride.started_at),
-        "current_rate": ride.rates[f"{ride.state}_rate"],
+        "current_rate": ride.rates.rate_for(ride.state),
     }
 
-def _row_to_ride_dto(row):
+def _record_dto(record):
     return {
-        "id": row["id"],
-        "started_at": row["started_at"],
-        "ended_at": row["ended_at"],
-        "duration_seconds": row["duration_seconds"],
-        "amount": row["amount"],
+        "id": record.id,
+        "started_at": record.started_at.isoformat(),
+        "ended_at": record.ended_at.isoformat(),
+        "duration_seconds": record.duration_seconds,
+        "amount": record.amount,
     }
 
 @protected.post("/api/ride/start", status_code=201)
 def start_ride(body: RatesRequest | None = None, session: RideSession = Depends(get_session)):
     try:
-        ride = session.start_ride(body.model_dump() if body else None)
+        ride = session.start_ride(Rates(**body.model_dump()) if body else None)
     except RideAlreadyActiveError:
         raise HTTPException(status_code=409, detail="A ride is already active")
     return _active_ride_dto(ride)
@@ -90,35 +92,32 @@ def change_state(body: ChangeStateRequest, session: RideSession = Depends(get_se
 @protected.post("/api/ride/end")
 def end_ride(session: RideSession = Depends(get_session)):
     try:
-        session.end_ride()
+        record = session.end_ride()
     except NoActiveRideError:
         raise HTTPException(status_code=404, detail="No active ride")
-    row = session.storage.load_by_id(session.storage.last_inserted_id)
-    return _row_to_ride_dto(row)
+    return _record_dto(record)
 
 @protected.get("/api/rides")
-def list_rides(date: str = None, session: RideSession = Depends(get_session)):
-    target_date = date or date_cls.today().isoformat()
-    rows = session.storage.load_by_date(target_date)
-    return [_row_to_ride_dto(row) for row in rows]
+def list_rides(date: date_cls | None = None, session: RideSession = Depends(get_session)):
+    records = session.get_history(date or date_cls.today())
+    return [_record_dto(record) for record in records]
 
 @protected.get("/api/rides/{ride_id}")
 def get_ride(ride_id: int, session: RideSession = Depends(get_session)):
-    row = session.storage.load_by_id(ride_id)
-    if row is None:
+    record = session.get_ride(ride_id)
+    if record is None:
         raise HTTPException(status_code=404, detail="Ride not found")
-    return _row_to_ride_dto(row)
+    return _record_dto(record)
 
 @protected.get("/api/rates")
 def get_rates(session: RideSession = Depends(get_session)):
-    return session.rates
+    return session.rates.to_dict()
 
 @protected.put("/api/rates")
 def update_rates(body: RatesRequest, session: RideSession = Depends(get_session)):
     # Applies to the next ride: the running one keeps the rates it started with.
-    for key, value in body.model_dump().items():
-        session.change_rate(key, value)
-    return session.rates
+    session.set_rates(Rates(**body.model_dump()))
+    return session.rates.to_dict()
 
 @app.get("/api/auth/status")
 def auth_status():

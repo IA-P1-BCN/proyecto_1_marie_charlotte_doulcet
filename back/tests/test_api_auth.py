@@ -6,7 +6,8 @@ from fastapi.testclient import TestClient
 from taximetro import api
 from taximetro.api import app, get_session
 from taximetro.ride_session import RideSession
-from taximetro.infrastructure.storage.db_storage import DbStorage
+from taximetro.domain.rates import Rates
+from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
 from taximetro.infrastructure.auth import hash_password, save_password_hash
 
 
@@ -18,7 +19,7 @@ class TestApiAuth(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         api._tokens.clear()
-        session = RideSession({"stopped_rate": 0.02, "moving_rate": 0.05}, DbStorage(os.path.join(self.tmp_dir, "t.db")))
+        session = RideSession(Rates(stopped_rate=0.02, moving_rate=0.05), SqliteRideRepository(os.path.join(self.tmp_dir, "t.db")))
         app.dependency_overrides[get_session] = lambda: session
         self.addCleanup(app.dependency_overrides.clear)
         self.client = TestClient(app)
