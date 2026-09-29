@@ -3,6 +3,9 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogActions from "@mui/material/DialogActions";
 import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
 import { colors } from "../theme.js";
@@ -16,6 +19,7 @@ export default function ActiveRide() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   const fetchRide = useCallback(async () => {
     try {
@@ -61,14 +65,17 @@ export default function ActiveRide() {
       setRide(data);
       setMessage("");
     } catch (err) {
-      setMessage(err.response?.status === 404 ? "No hay una carrera en curso." : GENERIC_ERROR);
+      const status = err.response?.status;
+      setMessage(
+        status === 409 ? "Ya estás en ese estado." : status === 404 ? "No hay una carrera en curso." : GENERIC_ERROR,
+      );
     } finally {
       setPending(false);
     }
   };
 
   const onEnd = async () => {
-    if (!window.confirm("¿Finalizar la carrera actual?")) return;
+    setConfirmEnd(false);
     setPending(true);
     try {
       await client.post("/ride/end");
@@ -134,7 +141,7 @@ export default function ActiveRide() {
         >
           Movimiento
         </Button>
-        <Button variant="contained" onClick={onEnd} disabled={pending} sx={{ bgcolor: colors.pinkText }}>
+        <Button variant="contained" onClick={() => setConfirmEnd(true)} disabled={pending} sx={{ bgcolor: colors.pinkText }}>
           Fin de carrera
         </Button>
       </Box>
@@ -143,6 +150,15 @@ export default function ActiveRide() {
           {message}
         </Typography>
       )}
+      <Dialog open={confirmEnd} onClose={() => setConfirmEnd(false)}>
+        <DialogTitle>¿Finalizar la carrera actual?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setConfirmEnd(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={onEnd} sx={{ bgcolor: colors.pinkText }}>
+            Finalizar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }
