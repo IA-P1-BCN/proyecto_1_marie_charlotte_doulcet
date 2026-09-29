@@ -45,9 +45,9 @@ def _row_to_ride_dto(row):
     }
 
 @app.post("/api/ride/start", status_code=201)
-def start_ride(session: RideSession = Depends(get_session)):
+def start_ride(body: RatesRequest | None = None, session: RideSession = Depends(get_session)):
     try:
-        ride = session.start_ride()
+        ride = session.start_ride(body.model_dump() if body else None)
     except RideAlreadyActiveError:
         raise HTTPException(status_code=409, detail="A ride is already active")
     return _active_ride_dto(ride)

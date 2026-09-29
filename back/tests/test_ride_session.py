@@ -21,6 +21,12 @@ class TestRideSession(unittest.TestCase):
         if os.path.exists(self.test_file):
             os.remove(self.test_file)
 
+    def test_start_ride_with_custom_rates_leaves_defaults_untouched(self):
+        custom = {"stopped_rate": 0.1, "moving_rate": 0.2}
+        ride = self.session.start_ride(custom)
+        self.assertEqual(ride.rates, custom)
+        self.assertNotEqual(self.session.rates, custom)
+
     def test_start_ride_sets_current_ride(self):
         ride = self.session.start_ride()
         self.assertIs(self.session.current_ride, ride)

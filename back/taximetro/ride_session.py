@@ -23,10 +23,10 @@ class RideSession:
     def has_active_ride(self):
         return self.current_ride is not None
 
-    def start_ride(self):
+    def start_ride(self, rates=None):
         if self.has_active_ride:
             raise RideAlreadyActiveError()
-        self.current_ride = Ride(self.rates)
+        self.current_ride = Ride(rates or self.rates)
         return self.current_ride
 
     def change_state(self, new_state):

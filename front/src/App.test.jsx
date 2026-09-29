@@ -95,21 +95,56 @@ describe("App", () => {
     });
   });
 
-  it("changes the rates from the dialog", async () => {
+  it("starts a ride with the rates chosen in the pre-ride dialog", async () => {
     mockGet({ active: null });
-    client.put.mockResolvedValueOnce({ data: { stopped_rate: 0.03, moving_rate: 0.05 } });
+    client.post.mockResolvedValueOnce({ data: activeRide });
     renderAt("/");
 
-    await userEvent.click(await screen.findByRole("button", { name: "Cambiar tarifa" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Iniciar carrera" }));
     const dialog = await screen.findByRole("dialog");
-    const stopped = within(dialog).getByLabelText("Parado (€/s)");
+    const stopped = await within(dialog).findByLabelText("Parado (€/s)");
+    await waitFor(() => expect(stopped).toHaveValue(0.02));
     await userEvent.clear(stopped);
     await userEvent.type(stopped, "0.03");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Empezar carrera" }));
 
     await waitFor(() =>
-      expect(client.put).toHaveBeenCalledWith("/rates", { stopped_rate: 0.03, moving_rate: 0.05 }),
+      expect(client.post).toHaveBeenCalledWith("/ride/start", { stopped_rate: 0.03, moving_rate: 0.05 }),
     );
+    expect(client.put).not.toHaveBeenCalled();
+  });
+
+  it("saves the rates as defaults when the checkbox is ticked", async () => {
+    mockGet({ active: null });
+    client.post.mockResolvedValueOnce({ data: activeRide });
+    client.put.mockResolvedValueOnce({ data: {} });
+    renderAt("/");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Iniciar carrera" }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(within(dialog).getByLabelText("Parado (€/s)")).toHaveValue(0.02));
+    await userEvent.click(within(dialog).getByLabelText("Guardar como tarifas por defecto"));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Empezar carrera" }));
+
+    await waitFor(() =>
+      expect(client.put).toHaveBeenCalledWith("/rates", { stopped_rate: 0.02, moving_rate: 0.05 }),
+    );
+  });
+
+  it("rejects non-positive rates without starting the ride", async () => {
+    mockGet({ active: null });
+    renderAt("/");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Iniciar carrera" }));
+    const dialog = await screen.findByRole("dialog");
+    const moving = await within(dialog).findByLabelText("Movimiento (€/s)");
+    await waitFor(() => expect(moving).toHaveValue(0.05));
+    await userEvent.clear(moving);
+    await userEvent.type(moving, "0");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Empezar carrera" }));
+
+    expect(within(dialog).getByText("Las tarifas deben ser números positivos.")).toBeInTheDocument();
+    expect(client.post).not.toHaveBeenCalled();
   });
 
   it("shows a message when the requested state is already the current one", async () => {
