@@ -2,7 +2,7 @@ import unittest
 import os
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from taximetro.api import app, get_session
+from taximetro.api import app, get_session, require_auth
 from taximetro.ride_session import RideSession
 from taximetro.infrastructure.storage.db_storage import DbStorage
 
@@ -12,6 +12,7 @@ class TestApi(unittest.TestCase):
         rates = {"stopped_rate": 0.02, "moving_rate": 0.05}
         self.session = RideSession(rates, DbStorage(self.test_db))
         app.dependency_overrides[get_session] = lambda: self.session
+        app.dependency_overrides[require_auth] = lambda: None
         self.client = TestClient(app)
 
     def tearDown(self):
