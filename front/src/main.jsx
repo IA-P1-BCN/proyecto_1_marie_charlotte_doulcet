@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import theme from "./theme.js";
+import theme from "./theme/theme.js";
 import App from "./App.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(

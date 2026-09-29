@@ -2,10 +2,10 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import App from "./App.jsx";
-import client from "./api/client.js";
+import App from "../App.jsx";
+import client from "../services/apiClient.js";
 
-vi.mock("./api/client.js", () => ({
+vi.mock("../services/apiClient.js", () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn() },
 }));
 

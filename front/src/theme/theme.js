@@ -1,53 +1,7 @@
 import { createTheme } from "@mui/material/styles";
-
-// Tokens and component styles from docs/mockups/web-panel.html (Phase 4 "neon-checker pop"), followed to the letter.
-// pink (#FF4D6D) is large/decorative only (fails AA at normal text size);
-// pink-text (#D6294B) is the text/fill-safe value — see DESIGN.md contrast table.
-export const colors = {
-  ink: "#191510",
-  yellow: "#FFC629",
-  bg: "#FFF9E8",
-  surface: "#FFFFFF",
-  pink: "#FF4D6D",
-  pinkText: "#D6294B",
-  green: "#0D7A56",
-  tabInactive: "#5C4A12",
-  muted: "#5E5A55", // mockup uses ink@60% opacity for secondary text; solid value keeps it AA
-};
-
-export const display = "'Bebas Neue', sans-serif";
+import { colors, display, offset } from "./tokens.js";
 
 const check = "rgba(25,21,16,0.045)";
-const offset = (px) => `${px}px ${px}px 0 ${colors.ink}`;
-
-// Reusable pieces (mockup .panel / .btn / .section-title / .history-card).
-export const panelSx = {
-  bgcolor: colors.surface,
-  border: `4px solid ${colors.ink}`,
-  borderRadius: "20px",
-  p: { xs: 3, sm: "36px" },
-  boxShadow: offset(10),
-  mb: 7,
-};
-export const cardSx = {
-  bgcolor: colors.surface,
-  border: `3px solid ${colors.ink}`,
-  borderRadius: "16px",
-  overflow: "hidden",
-  boxShadow: "none",
-};
-export const btnMoving = { bgcolor: colors.yellow, color: colors.ink, boxShadow: offset(4), "&:hover": { bgcolor: colors.yellow, filter: "brightness(0.95)" } };
-export const btnEnd = { bgcolor: colors.pinkText, color: "white", boxShadow: offset(4), "&:hover": { bgcolor: colors.pinkText, filter: "brightness(0.95)" } };
-export const diamond = (size, radius, border = false) => ({
-  content: '""',
-  display: "inline-block",
-  width: size,
-  height: size,
-  bgcolor: colors.pink,
-  borderRadius: `${radius}px`,
-  transform: "rotate(45deg)",
-  ...(border && { border: `2px solid ${colors.ink}` }),
-});
 
 const theme = createTheme({
   palette: {
