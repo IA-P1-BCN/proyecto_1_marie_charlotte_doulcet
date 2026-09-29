@@ -89,9 +89,15 @@ def main():
                     continue
 
                 new_state = {"M": "moving", "P": "stopped"}[command]
+                estado_es = "en movimiento" if new_state == "moving" else "parado"
+                estado_nombre = "movimiento" if new_state == "moving" else "parado"
+
+                if current_ride.state == new_state:
+                    print(f"Ya estás en modo {estado_nombre}. Puedes cambiar de estado o finalizar la carrera (F).")
+                    continue
+
                 current_ride.toggle_state(new_state)
                 logging.info("State changed to %s", new_state)
-                estado_es = "en movimiento" if new_state == "moving" else "parado"
                 print(f"Estado cambiado a: {estado_es}.")
 
             elif command == "F":
