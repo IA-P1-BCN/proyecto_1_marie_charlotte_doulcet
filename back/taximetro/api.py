@@ -1,9 +1,10 @@
 from datetime import datetime, date as date_cls
 from pathlib import Path
 from typing import Literal
+import time
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from taximetro.infrastructure.rates_config import load_rates
 from taximetro.infrastructure.storage.db_storage import DbStorage
 from taximetro.ride_session import RideSession, NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
@@ -21,11 +22,17 @@ def get_session():
 class ChangeStateRequest(BaseModel):
     state: Literal["stopped", "moving"]
 
+class RatesRequest(BaseModel):
+    stopped_rate: float = Field(gt=0)
+    moving_rate: float = Field(gt=0)
+
 def _active_ride_dto(ride):
     return {
         "state": ride.state,
         "started_at": datetime.fromtimestamp(ride.started_at).isoformat(),
         "amount_so_far": round(ride.get_total(), 2),
+        "elapsed_seconds": round(time.time() - ride.started_at),
+        "current_rate": ride.rates[f"{ride.state}_rate"],
     }
 
 def _row_to_ride_dto(row):
@@ -82,6 +89,17 @@ def get_ride(ride_id: int, session: RideSession = Depends(get_session)):
     if row is None:
         raise HTTPException(status_code=404, detail="Ride not found")
     return _row_to_ride_dto(row)
+
+@app.get("/api/rates")
+def get_rates(session: RideSession = Depends(get_session)):
+    return session.rates
+
+@app.put("/api/rates")
+def update_rates(body: RatesRequest, session: RideSession = Depends(get_session)):
+    # Applies to the next ride: the running one keeps the rates it started with.
+    for key, value in body.model_dump().items():
+        session.change_rate(key, value)
+    return session.rates
 
 # Prod only: serve the React build. Mounted last so it never shadows /api routes.
 # Skipped if front/dist doesn't exist, so `uvicorn --reload` still works during frontend dev.

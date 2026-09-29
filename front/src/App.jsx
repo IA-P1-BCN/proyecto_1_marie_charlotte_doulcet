@@ -19,6 +19,7 @@ export default function App() {
           <Typography sx={{ color: colors.yellow, fontFamily: "'Bebas Neue', sans-serif", fontSize: 28 }}>
             TaxiTech
           </Typography>
+          <Typography sx={{ color: colors.yellow, ml: "auto" }}>Digital Taximeter</Typography>
         </Toolbar>
       </AppBar>
       <Tabs

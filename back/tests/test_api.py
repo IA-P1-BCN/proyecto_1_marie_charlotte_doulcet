@@ -1,5 +1,6 @@
 import unittest
 import os
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from taximetro.api import app, get_session
 from taximetro.ride_session import RideSession
@@ -46,6 +47,28 @@ class TestApi(unittest.TestCase):
         self.client.post("/api/ride/start")
         response = self.client.patch("/api/ride/state", json={"state": "stopped"})
         self.assertEqual(response.status_code, 409)
+
+    def test_active_ride_exposes_elapsed_and_current_rate(self):
+        self.client.post("/api/ride/start")
+        body = self.client.get("/api/ride").json()
+        self.assertGreaterEqual(body["elapsed_seconds"], 0)
+        self.assertEqual(body["current_rate"], 0.02)
+
+    def test_get_rates(self):
+        response = self.client.get("/api/rates")
+        self.assertEqual(response.json(), {"stopped_rate": 0.02, "moving_rate": 0.05})
+
+    def test_put_rates_updates_session_and_persists(self):
+        with patch("taximetro.ride_session.save_rates") as save:
+            response = self.client.put("/api/rates", json={"stopped_rate": 0.03, "moving_rate": 0.06})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.session.rates, {"stopped_rate": 0.03, "moving_rate": 0.06})
+        self.assertTrue(save.called)
+
+    def test_put_rates_rejects_non_positive(self):
+        with patch("taximetro.ride_session.save_rates"):
+            response = self.client.put("/api/rates", json={"stopped_rate": 0, "moving_rate": 0.06})
+        self.assertEqual(response.status_code, 422)
 
 if __name__ == '__main__':
     unittest.main()
