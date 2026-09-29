@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
-import { colors } from "../theme.js";
+import { colors, btnMoving } from "../theme.js";
 import client from "../api/client.js";
 
 // Same password as the CLI/GUI (auth.ini). First use: create it; afterwards: log in.
@@ -67,7 +67,7 @@ export default function Login({ onLogin }) {
                   onChange={(e) => setConfirm(e.target.value)}
                 />
               )}
-              <Button type="submit" variant="contained" sx={{ bgcolor: colors.yellow, color: colors.ink }}>
+              <Button type="submit" sx={btnMoving}>
                 {passwordSet ? "Entrar" : "Crear contraseña"}
               </Button>
             </>

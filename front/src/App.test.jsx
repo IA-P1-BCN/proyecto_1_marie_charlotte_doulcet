@@ -53,9 +53,17 @@ describe("App", () => {
     renderAt("/");
 
     expect(await screen.findByText("En movimiento")).toBeInTheDocument();
-    expect(screen.getByText("12.40 €")).toBeInTheDocument();
-    expect(screen.getByText("00:01:15")).toBeInTheDocument();
-    expect(screen.getByText("0.05 €/s")).toBeInTheDocument();
+    expect(screen.getByText("12.40")).toBeInTheDocument();
+    expect(screen.getByText("€")).toBeInTheDocument();
+    expect(screen.getByText("00:01:15 transcurrido · tarifa 0.05€/s")).toBeInTheDocument();
+  });
+
+  it("shows the section title and footer from the mockup", async () => {
+    mockGet();
+    renderAt("/");
+
+    expect(await screen.findByText("Historial de hoy")).toBeInTheDocument();
+    expect(screen.getByText("TaxiTech Solutions · Digital Taximeter")).toBeInTheDocument();
   });
 
   it("shows today's history under the active ride and opens a ride's detail on click", async () => {
