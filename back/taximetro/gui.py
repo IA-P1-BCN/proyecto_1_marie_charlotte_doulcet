@@ -1,9 +1,7 @@
 import tkinter as tk
-from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
-from taximetro.infrastructure.rates_config import load_rates
+from taximetro.bootstrap import build_ride_service
 from taximetro.domain.errors import AlreadyInStateError, NoActiveRideError, RideAlreadyActiveError
 from taximetro.domain.ride_state import RideState
-from taximetro.ride_session import RideSession
 
 COLOR_STOPPED = "#E53935"
 COLOR_MOVING = "#43A047"
@@ -15,9 +13,9 @@ REFRESH_MS = 500
 
 
 class TaximetroGUI:
-    def __init__(self, root, session):
+    def __init__(self, root, rides):
         self.root = root
-        self.session = session
+        self.rides = rides
         self.root.title("Taxímetro")
         self.root.configure(bg=COLOR_BG)
 
@@ -69,7 +67,7 @@ class TaximetroGUI:
 
     def on_start(self):
         try:
-            self.session.start_ride()
+            self.rides.start_ride()
             self.status_label.config(text="Carrera iniciada.")
         except RideAlreadyActiveError:
             self.status_label.config(text="Ya hay una carrera en curso.")
@@ -82,7 +80,7 @@ class TaximetroGUI:
 
     def _change_state(self, new_state):
         try:
-            self.session.change_state(new_state)
+            self.rides.change_state(new_state)
             self.status_label.config(text="")
         except NoActiveRideError:
             self.status_label.config(text="No hay una carrera en curso. Inicie una carrera primero.")
@@ -92,7 +90,7 @@ class TaximetroGUI:
 
     def on_end(self):
         try:
-            record = self.session.end_ride()
+            record = self.rides.end_ride()
             self.status_label.config(text=f"Carrera finalizada. Total: {record.amount:.2f} €")
         except NoActiveRideError:
             self.status_label.config(text="No hay una carrera en curso. Inicie una carrera primero.")
@@ -101,8 +99,8 @@ class TaximetroGUI:
         if not self.root.winfo_exists():
             return
 
-        if self.session.has_active_ride:
-            ride = self.session.current_ride
+        if self.rides.has_active_ride:
+            ride = self.rides.current_ride
             self.amount_label.config(text=f"{ride.get_total():.2f} €")
             if ride.state is RideState.MOVING:
                 self.banner.config(text="● EN MOVIMIENTO", bg=COLOR_MOVING)
@@ -116,10 +114,8 @@ class TaximetroGUI:
 
 
 def main():
-    rates = load_rates()
-    session = RideSession(rates, SqliteRideRepository())
     root = tk.Tk()
-    TaximetroGUI(root, session)
+    TaximetroGUI(root, build_ride_service())
     root.mainloop()
 
 
