@@ -4,3 +4,4 @@ __pycache__/
 
 back/taximetro.log
 back/rides_history.csv
+back/auth.ini

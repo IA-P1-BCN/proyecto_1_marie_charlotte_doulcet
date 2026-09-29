@@ -1,9 +1,11 @@
 import time
 import logging
+import getpass
 from taximetro.domain.ride import Ride
 from taximetro.infrastructure.storage.file_storage import FileStorage
 from taximetro.infrastructure.logging_setup import configure_logging
 from taximetro.infrastructure.rates_config import load_rates, save_rates
+from taximetro.infrastructure.auth import (hash_password, check_password, is_password_set, save_password_hash, load_password_hash,)
 
 MENU = """
 ========== TAXIMETRO =========
@@ -16,9 +18,47 @@ T - Cambiar tarifa
 Q - Salir
 Ingrese un comando:"""
 
+def _setup_new_password():
+    new_password = getpass.getpass("Nueva contraseña: ").strip()
+    while not new_password:
+        print("La contraseña no puede estar vacía.")
+        new_password = getpass.getpass("Nueva contraseña: ").strip()
+    save_password_hash(hash_password(new_password))
+
+def require_password():
+    if not is_password_set():
+        print("No hay contraseña configurada. Configure una para continuar.")
+        _setup_new_password()
+        logging.info("Password set for the first time")
+        return
+
+    stored_hash = load_password_hash()
+    if "$" not in stored_hash:
+        logging.warning("Stored password hash is malformed, restarting setup")
+        print("La contraseña guardada está dañada. Configure una nueva para continuar.")
+        _setup_new_password()
+        logging.info("Password reset after corrupted hash")
+        return
+    
+    while True:
+        try:
+            password = getpass.getpass("Contraseña (Q para salir): ").strip()
+        except EOFError:
+            password = "Q"
+
+        if password.upper() == "Q":
+            logging.info("User exited at password prompt")
+            print("Saliendo del taxímetro. ¡Hasta luego!")
+            raise SystemExit(0)
+        
+        if check_password(password, stored_hash):
+            return 
+        print("Contraseña incorrecta. Intente de nuevo.")
+
 def main():
     configure_logging()
     logging.info("Taximetro started")
+    require_password()
 
     try:
         rates = load_rates()
