@@ -6,7 +6,7 @@ import secrets
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from taximetro.infrastructure.auth import hash_password, check_password, is_password_set, save_password_hash, load_password_hash
+from taximetro.infrastructure.auth import hash_password, check_password, is_registered, save_account, load_password_hash, check_company
 from taximetro.infrastructure.rates_config import load_rates
 from taximetro.infrastructure.storage.db_storage import DbStorage
 from taximetro.ride_session import RideSession, NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
@@ -32,7 +32,8 @@ def get_session():
 class ChangeStateRequest(BaseModel):
     state: Literal["stopped", "moving"]
 
-class PasswordRequest(BaseModel):
+class CredentialsRequest(BaseModel):
+    company: str
     password: str
 
 def _new_token():
@@ -121,21 +122,26 @@ def update_rates(body: RatesRequest, session: RideSession = Depends(get_session)
 
 @app.get("/api/auth/status")
 def auth_status():
-    return {"password_set": is_password_set(AUTH_PATH)}
+    return {"registered": is_registered(AUTH_PATH)}
 
 @app.post("/api/auth/setup", status_code=201)
-def auth_setup(body: PasswordRequest):
-    if is_password_set(AUTH_PATH):
-        raise HTTPException(status_code=409, detail="Password already set")
-    if not body.password.strip():
-        raise HTTPException(status_code=422, detail="Password must not be blank")
-    save_password_hash(hash_password(body.password.strip()), AUTH_PATH)
+def auth_setup(body: CredentialsRequest):
+    if is_registered(AUTH_PATH):
+        raise HTTPException(status_code=409, detail="Account already registered")
+    company, password = body.company.strip(), body.password.strip()
+    if not company or not password:
+        raise HTTPException(status_code=422, detail="Company and password must not be blank")
+    # Also replaces a password created earlier from the CLI/GUI (same auth.ini).
+    save_account(company, hash_password(password), AUTH_PATH)
     return _new_token()
 
 @app.post("/api/auth/login")
-def auth_login(body: PasswordRequest):
-    if not is_password_set(AUTH_PATH) or not check_password(body.password.strip(), load_password_hash(AUTH_PATH)):
-        raise HTTPException(status_code=401, detail="Wrong password")
+def auth_login(body: CredentialsRequest):
+    if not is_registered(AUTH_PATH):
+        raise HTTPException(status_code=401, detail="Wrong credentials")
+    password_ok = check_password(body.password.strip(), load_password_hash(AUTH_PATH))
+    if not (check_company(body.company, AUTH_PATH) and password_ok):
+        raise HTTPException(status_code=401, detail="Wrong credentials")
     return _new_token()
 
 app.include_router(protected)

@@ -35,3 +35,29 @@ def load_password_hash(path="auth.ini"):
     parser = configparser.ConfigParser()
     parser.read(path)
     return parser.get(AUTH_SECTION, PASSWORD_HASH_KEY)
+
+# Web-panel account: a company name stored next to the password hash. CLI/GUI only ever use the hash.
+COMPANY_KEY = "company"
+
+def _normalize_company(name):
+    return name.strip().casefold()
+
+def load_company(path="auth.ini"):
+    parser = configparser.ConfigParser()
+    parser.read(path)
+    return parser.get(AUTH_SECTION, COMPANY_KEY, fallback="")
+
+def is_registered(path="auth.ini"):
+    return is_password_set(path) and bool(load_company(path))
+
+def save_account(company, password_hash, path="auth.ini"):
+    save_password_hash(password_hash, path)
+    parser = configparser.ConfigParser()
+    parser.read(path)
+    parser.set(AUTH_SECTION, COMPANY_KEY, company.strip())
+    with open(path, "w") as f:
+        parser.write(f)
+
+def check_company(company, path="auth.ini"):
+    return hmac.compare_digest(_normalize_company(company).encode(), _normalize_company(load_company(path)).encode())
+

@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
-import Container from "@mui/material/Container";
-import { colors, btnMoving } from "../theme.js";
+import { colors, display, diamond, panelSx, btnMoving } from "../theme.js";
 import client from "../api/client.js";
+import Header, { Footer } from "./Header.jsx";
 
-// Same password as the CLI/GUI (auth.ini). First use: create it; afterwards: log in.
+// One account per install. Nothing registered yet: first-connection form (company + password twice);
+// otherwise: log in with company + password. The password is shared with the CLI/GUI (auth.ini).
 export default function Login({ onLogin }) {
-  const [passwordSet, setPasswordSet] = useState(null);
+  const [registered, setRegistered] = useState(null);
+  const [company, setCompany] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -19,62 +21,94 @@ export default function Login({ onLogin }) {
   useEffect(() => {
     client
       .get("/auth/status")
-      .then(({ data }) => setPasswordSet(data.password_set))
+      .then(({ data }) => setRegistered(data.registered))
       .catch(() => setError("Sin conexión con el servidor."));
   }, []);
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!passwordSet && password !== confirm) {
+    if (!registered && password !== confirm) {
       setError("Las contraseñas no coinciden.");
       return;
     }
     try {
-      const { data } = await client.post(passwordSet ? "/auth/login" : "/auth/setup", { password });
+      const { data } = await client.post(registered ? "/auth/login" : "/auth/setup", { company, password });
       onLogin(data.token);
     } catch (err) {
       const status = err.response?.status;
       setError(
-        status === 401 ? "Contraseña incorrecta." : status === 422 ? "La contraseña no puede estar vacía." : "Error de conexión. Inténtalo de nuevo.",
+        status === 401
+          ? "Nombre de empresa o contraseña incorrectos."
+          : status === 422
+            ? "El nombre de la empresa y la contraseña no pueden estar vacíos."
+            : "Error de conexión. Inténtalo de nuevo.",
       );
     }
   };
 
   return (
-    <Container maxWidth="xs" sx={{ py: 8 }}>
-      <Paper component="form" onSubmit={submit} sx={{ p: 4, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Typography sx={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40 }}>
-          {passwordSet === false ? "Crear contraseña" : "TaxiTech"}
-        </Typography>
-        {passwordSet === null && !error ? (
-          <CircularProgress sx={{ alignSelf: "center" }} />
-        ) : (
-          passwordSet !== null && (
-            <>
-              <TextField
-                label="Contraseña"
-                type="password"
-                autoFocus
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              {!passwordSet && (
+    <>
+      <Header />
+      <Box sx={{ maxWidth: 520, mx: "auto", px: { xs: 2, sm: "36px" }, py: { xs: 3, sm: 6 } }}>
+        <Box component="form" onSubmit={submit} sx={{ ...panelSx, display: "flex", flexDirection: "column", gap: 2 }}>
+          {registered === null && !error ? (
+            <CircularProgress sx={{ alignSelf: "center" }} />
+          ) : (
+            registered !== null && (
+              <>
+                <Box>
+                  <Typography
+                    component="h1"
+                    sx={{
+                      fontFamily: display,
+                      fontSize: 34,
+                      lineHeight: 1.1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      "&::before": { ...diamond(18, 4, true), flexShrink: 0 },
+                    }}
+                  >
+                    {registered ? "Bienvenido de nuevo" : "Bienvenido a TaxiTech"}
+                  </Typography>
+                  <Typography sx={{ color: colors.muted, fontSize: 13, mt: 1 }}>
+                    {registered ? "Inicia sesión con tu empresa." : "Primera conexión"}
+                  </Typography>
+                </Box>
                 <TextField
-                  label="Confirmar contraseña"
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
+                  label="Nombre de la empresa"
+                  autoComplete="username"
+                  autoFocus
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
                 />
-              )}
-              <Button type="submit" sx={btnMoving}>
-                {passwordSet ? "Entrar" : "Crear contraseña"}
-              </Button>
-            </>
-          )
-        )}
-        {error && <Alert severity="error">{error}</Alert>}
-      </Paper>
-    </Container>
+                <TextField
+                  label="Contraseña"
+                  type="password"
+                  autoComplete={registered ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                {!registered && (
+                  <TextField
+                    label="Repetir contraseña"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                  />
+                )}
+                <Button type="submit" sx={btnMoving}>
+                  {registered ? "Entrar" : "Crear cuenta y entrar"}
+                </Button>
+              </>
+            )
+          )}
+          {error && <Alert severity="error">{error}</Alert>}
+        </Box>
+      </Box>
+      <Footer />
+    </>
   );
 }

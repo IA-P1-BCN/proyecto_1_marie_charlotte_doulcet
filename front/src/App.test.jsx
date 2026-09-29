@@ -33,9 +33,9 @@ const ride = {
 };
 
 // Routes GET by url so component fetch order doesn't matter.
-function mockGet({ active = activeRide, rides = [ride], passwordSet = true } = {}) {
+function mockGet({ active = activeRide, rides = [ride], registered = true } = {}) {
   client.get.mockImplementation((url) => {
-    if (url === "/auth/status") return Promise.resolve({ data: { password_set: passwordSet } });
+    if (url === "/auth/status") return Promise.resolve({ data: { registered } });
     if (url === "/ride") return active ? Promise.resolve({ data: active }) : Promise.reject({ response: { status: 404 } });
     if (url === "/rides") return Promise.resolve({ data: rides });
     if (url === "/rates") return Promise.resolve({ data: { stopped_rate: 0.02, moving_rate: 0.05 } });
@@ -183,45 +183,53 @@ describe("App", () => {
   describe("auth", () => {
     beforeEach(() => localStorage.removeItem("token"));
 
-    it("asks for the password when logged out, then shows the app", async () => {
+    it("shows the welcome-back login when a company is registered, then the app", async () => {
       mockGet();
       client.post.mockResolvedValueOnce({ data: { token: "abc" } });
       renderAt("/");
 
-      await userEvent.type(await screen.findByLabelText("Contraseña"), "secreto123");
+      expect(await screen.findByText("Bienvenido de nuevo")).toBeInTheDocument();
+      await userEvent.type(screen.getByLabelText("Nombre de la empresa"), "Taxis Sol");
+      await userEvent.type(screen.getByLabelText("Contraseña"), "secreto123");
       await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-      expect(client.post).toHaveBeenCalledWith("/auth/login", { password: "secreto123" });
+      expect(client.post).toHaveBeenCalledWith("/auth/login", { company: "Taxis Sol", password: "secreto123" });
       expect(await screen.findByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
       expect(localStorage.getItem("token")).toBe("abc");
     });
 
-    it("shows an error on a wrong password", async () => {
+    it("shows an error on wrong credentials", async () => {
       mockGet();
       client.post.mockRejectedValueOnce({ response: { status: 401 } });
       renderAt("/");
 
-      await userEvent.type(await screen.findByLabelText("Contraseña"), "mala");
+      await userEvent.type(await screen.findByLabelText("Nombre de la empresa"), "Taxis Sol");
+      await userEvent.type(screen.getByLabelText("Contraseña"), "mala");
       await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent("Contraseña incorrecta.");
+      expect(await screen.findByRole("alert")).toHaveTextContent("Nombre de empresa o contraseña incorrectos.");
     });
 
-    it("offers to create the password on first use and checks the confirmation", async () => {
-      mockGet({ passwordSet: false });
+    it("registers a new company on first connection, checking the password twice, and logs in", async () => {
+      mockGet({ registered: false });
       client.post.mockResolvedValueOnce({ data: { token: "abc" } });
       renderAt("/");
 
-      await userEvent.type(await screen.findByLabelText("Contraseña"), "secreto123");
-      await userEvent.type(screen.getByLabelText("Confirmar contraseña"), "distinta");
-      await userEvent.click(screen.getByRole("button", { name: "Crear contraseña" }));
+      expect(await screen.findByText("Bienvenido a TaxiTech")).toBeInTheDocument();
+      expect(screen.getByText("Primera conexión")).toBeInTheDocument();
+      await userEvent.type(screen.getByLabelText("Nombre de la empresa"), "Taxis Sol");
+      await userEvent.type(screen.getByLabelText("Contraseña", { exact: true }), "secreto123");
+      await userEvent.type(screen.getByLabelText("Repetir contraseña"), "distinta");
+      await userEvent.click(screen.getByRole("button", { name: "Crear cuenta y entrar" }));
       expect(await screen.findByRole("alert")).toHaveTextContent("Las contraseñas no coinciden.");
       expect(client.post).not.toHaveBeenCalled();
 
-      await userEvent.clear(screen.getByLabelText("Confirmar contraseña"));
-      await userEvent.type(screen.getByLabelText("Confirmar contraseña"), "secreto123");
-      await userEvent.click(screen.getByRole("button", { name: "Crear contraseña" }));
-      expect(client.post).toHaveBeenCalledWith("/auth/setup", { password: "secreto123" });
+      await userEvent.clear(screen.getByLabelText("Repetir contraseña"));
+      await userEvent.type(screen.getByLabelText("Repetir contraseña"), "secreto123");
+      await userEvent.click(screen.getByRole("button", { name: "Crear cuenta y entrar" }));
+
+      expect(client.post).toHaveBeenCalledWith("/auth/setup", { company: "Taxis Sol", password: "secreto123" });
+      expect(await screen.findByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
     });
   });
 
@@ -231,7 +239,7 @@ describe("App", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
 
-    expect(await screen.findByLabelText("Contraseña")).toBeInTheDocument();
+    expect(await screen.findByText("Bienvenido de nuevo")).toBeInTheDocument();
     expect(localStorage.getItem("token")).toBeNull();
   });
 });

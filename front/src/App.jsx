@@ -3,12 +3,12 @@ import { Routes, Route, Link, useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import { colors, display, diamond } from "./theme.js";
+import { colors, display } from "./theme.js";
 import ActiveRide from "./components/ActiveRide.jsx";
 import RideHistory from "./components/RideHistory.jsx";
 import Login from "./components/Login.jsx";
+import Header, { Footer } from "./components/Header.jsx";
 import { getToken, setToken, clearToken, AUTH_EXPIRED } from "./auth.js";
 
 export default function App() {
@@ -34,56 +34,26 @@ export default function App() {
 
   return (
     <>
-      <Box
-        component="header"
-        sx={{
-          bgcolor: colors.ink,
-          px: { xs: 2, sm: "36px" },
-          py: "22px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-        }}
-      >
-        <Typography
+      <Header>
+        <Button
+          onClick={() => {
+            clearToken();
+            setTokenState(null);
+          }}
           sx={{
-            fontFamily: display,
-            fontSize: 32,
-            letterSpacing: "0.03em",
             color: colors.yellow,
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            "&::before": diamond(14, 3),
+            bgcolor: "transparent",
+            border: `2px solid ${colors.yellow}`,
+            borderRadius: "8px",
+            fontSize: 14,
+            lineHeight: 1.2,
+            p: "4px 12px",
+            "&:hover": { bgcolor: "transparent", filter: "brightness(1.1)" },
           }}
         >
-          TaxiTech
-        </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography sx={{ color: colors.bg, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.6, display: { xs: "none", sm: "block" } }}>
-            Digital Taximeter
-          </Typography>
-          <Button
-            onClick={() => {
-              clearToken();
-              setTokenState(null);
-            }}
-            sx={{
-              color: colors.yellow,
-              bgcolor: "transparent",
-              border: `2px solid ${colors.yellow}`,
-              borderRadius: "8px",
-              fontSize: 14,
-              lineHeight: 1.2,
-              p: "4px 12px",
-              "&:hover": { bgcolor: "transparent", filter: "brightness(1.1)" },
-            }}
-          >
-            Cerrar sesión
-          </Button>
-        </Box>
-      </Box>
+          Cerrar sesión
+        </Button>
+      </Header>
       <Tabs
         value={pathname}
         slotProps={{ indicator: { sx: { display: "none" } } }}
@@ -114,9 +84,7 @@ export default function App() {
           <Route path="/historial" element={<RideHistory />} />
         </Routes>
       </Box>
-      <Typography component="footer" sx={{ textAlign: "center", p: 4, fontSize: 11, color: colors.muted, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-        TaxiTech Solutions · Digital Taximeter
-      </Typography>
+      <Footer />
     </>
   );
 }
