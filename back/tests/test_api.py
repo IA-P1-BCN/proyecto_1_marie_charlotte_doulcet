@@ -76,6 +76,13 @@ class TestApi(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(self.rates_repository.saved, [])
 
+    def test_put_rates_rejects_infinity(self):
+        response = self.client.put(
+            "/api/rates", content='{"stopped_rate": 1e999, "moving_rate": 0.06}', headers={"Content-Type": "application/json"}
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.rates_repository.saved, [])
+
     def test_start_with_custom_rates_applies_to_that_ride_only(self):
         response = self.client.post("/api/ride/start", json={"stopped_rate": 0.1, "moving_rate": 0.2})
         self.assertEqual(response.status_code, 201)

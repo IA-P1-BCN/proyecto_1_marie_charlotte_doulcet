@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 import logging
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from taximetro import settings
 from taximetro.api.routes import auth, history, ride, rates
@@ -16,6 +18,12 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Taximetro API", lifespan=lifespan)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, exc):
+        errors = [{key: error[key] for key in ("type", "loc", "msg")} for error in exc.errors()]
+        return JSONResponse(status_code=422, content={"detail": errors})
+
     for module in (auth, ride, history, rates):
         app.include_router(module.router)
     if settings.FRONT_DIST.is_dir():
