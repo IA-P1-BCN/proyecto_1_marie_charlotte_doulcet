@@ -70,5 +70,15 @@ class TestApi(unittest.TestCase):
             response = self.client.put("/api/rates", json={"stopped_rate": 0, "moving_rate": 0.06})
         self.assertEqual(response.status_code, 422)
 
+    def test_start_with_custom_rates_applies_to_that_ride_only(self):
+        response = self.client.post("/api/ride/start", json={"stopped_rate": 0.1, "moving_rate": 0.2})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["current_rate"], 0.1)
+        self.assertEqual(self.session.rates, {"stopped_rate": 0.02, "moving_rate": 0.05})
+
+    def test_start_with_invalid_rates_returns_422(self):
+        response = self.client.post("/api/ride/start", json={"stopped_rate": -1, "moving_rate": 0.2})
+        self.assertEqual(response.status_code, 422)
+
 if __name__ == '__main__':
     unittest.main()

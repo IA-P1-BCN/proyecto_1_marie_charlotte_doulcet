@@ -12,7 +12,7 @@ import { colors } from "../theme.js";
 import client from "../api/client.js";
 import { formatDuration } from "../format.js";
 import RideHistory from "./RideHistory.jsx";
-import RatesDialog from "./RatesDialog.jsx";
+import StartRideDialog from "./StartRideDialog.jsx";
 
 const REFRESH_MS = 1000;
 const GENERIC_ERROR = "Error de conexión. Inténtalo de nuevo.";
@@ -23,7 +23,7 @@ export default function ActiveRide() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const [ratesOpen, setRatesOpen] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
   const [endedCount, setEndedCount] = useState(0);
 
   const fetchRide = useCallback(async () => {
@@ -50,10 +50,10 @@ export default function ActiveRide() {
     return () => clearInterval(id);
   }, [fetchRide]);
 
-  const onStart = async () => {
+  const onStart = async (rates) => {
     setPending(true);
     try {
-      const { data } = await client.post("/ride/start");
+      const { data } = await client.post("/ride/start", rates);
       setRide(data);
       setMessage("");
     } catch (err) {
@@ -104,24 +104,17 @@ export default function ActiveRide() {
 
   const isMoving = ride?.state === "moving";
 
-  const ratesButton = (
-    <Button onClick={() => setRatesOpen(true)} sx={{ color: colors.ink }}>
-      Cambiar tarifa
-    </Button>
-  );
-
   const card = !ride ? (
       <Paper sx={{ p: 4, textAlign: "center" }}>
         <Typography sx={{ mb: 2 }}>Sin carrera activa.</Typography>
         <Button
           variant="contained"
-          onClick={onStart}
+          onClick={() => setStartOpen(true)}
           disabled={pending}
           sx={{ bgcolor: colors.yellow, color: colors.ink, "&:hover": { bgcolor: colors.yellow, filter: "brightness(0.92)" } }}
         >
           Iniciar carrera
         </Button>
-        <Box sx={{ mt: 1 }}>{ratesButton}</Box>
         {message && (
           <Typography role="status" sx={{ mt: 2 }}>
             {message}
@@ -155,7 +148,6 @@ export default function ActiveRide() {
         <Button variant="contained" onClick={() => setConfirmEnd(true)} disabled={pending} sx={{ bgcolor: colors.pinkText }}>
           Fin de carrera
         </Button>
-        {ratesButton}
       </Box>
       {message && (
         <Typography role="status" sx={{ mt: 2 }}>
@@ -181,7 +173,7 @@ export default function ActiveRide() {
         Historial de hoy
       </Typography>
       <RideHistory limit={10} reloadKey={endedCount} />
-      <RatesDialog open={ratesOpen} onClose={() => setRatesOpen(false)} onSaved={fetchRide} />
+      <StartRideDialog open={startOpen} onClose={() => setStartOpen(false)} onStart={onStart} />
     </>
   );
 }
