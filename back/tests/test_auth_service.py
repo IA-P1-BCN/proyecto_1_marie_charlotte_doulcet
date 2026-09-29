@@ -59,6 +59,22 @@ class TestAuthService(unittest.TestCase):
     def test_invalid_token_is_rejected(self):
         self.assertFalse(self.service.is_valid_token("nope"))
 
+    def test_register_and_login_are_logged(self):
+        with self.assertLogs("taximetro.auth", level="INFO") as logs:
+            self.service.register("Taxis Sol", "secreto123")
+            self.service.login("Taxis Sol", "secreto123")
+        text = "\n".join(logs.output)
+        self.assertIn("Account registered", text)
+        self.assertIn("Login succeeded", text)
+
+    def test_failed_login_is_logged_as_warning_without_the_password(self):
+        self.service.register("Taxis Sol", "secreto123")
+        with self.assertLogs("taximetro.auth", level="WARNING") as logs:
+            with self.assertRaises(InvalidCredentialsError):
+                self.service.login("Taxis Sol", "wrong-password")
+        self.assertIn("Login failed", logs.output[0])
+        self.assertNotIn("wrong-password", logs.output[0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -70,5 +70,21 @@ class TestRideService(unittest.TestCase):
         self.assertEqual(self.session.rates, new_rates)
         self.assertEqual(self.rates_repository.saved, [new_rates])
 
+    def test_ride_lifecycle_is_logged(self):
+        with self.assertLogs("taximetro.ride", level="INFO") as logs:
+            self.session.start_ride()
+            self.session.change_state(RideState.MOVING)
+            self.session.end_ride()
+        text = "\n".join(logs.output)
+        self.assertIn("Ride started", text)
+        self.assertIn("Ride state changed to moving", text)
+        self.assertIn("Ride ended", text)
+
+    def test_rates_change_is_logged(self):
+        with self.assertLogs("taximetro.ride", level="INFO") as logs:
+            self.session.set_rates(Rates(stopped_rate=0.1, moving_rate=0.2))
+        self.assertIn("Default rates changed", logs.output[0])
+
+
 if __name__ == '__main__':
     unittest.main()

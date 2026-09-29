@@ -1,5 +1,7 @@
 import unittest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
+from taximetro import settings
 from taximetro.api import app
 from taximetro.api.dependencies import get_ride_service, require_auth
 from taximetro.application.ride_service import RideService
@@ -32,6 +34,11 @@ class TestApi(unittest.TestCase):
         body = end_response.json()
         self.assertIn("id", body)
         self.assertAlmostEqual(body["amount"], self.session.get_ride(body["id"]).amount)
+
+    def test_logging_is_configured_when_the_app_starts(self):
+        with patch("taximetro.api.factory.configure_logging") as configure:
+            with TestClient(app):
+                configure.assert_called_once_with(settings.LOG_PATH)
 
     def test_start_twice_returns_409(self):
         self.client.post("/api/ride/start")
