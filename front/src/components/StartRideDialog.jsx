@@ -8,7 +8,7 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
-import { colors } from "../theme.js";
+import { btnMoving } from "../theme.js";
 import client from "../api/client.js";
 
 // Pre-ride step: rates are prefilled with the defaults and only editable here, never mid-ride.
@@ -72,7 +72,7 @@ export default function StartRideDialog({ open, onClose, onStart }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" onClick={submit} sx={{ bgcolor: colors.pinkText }}>
+        <Button onClick={submit} sx={btnMoving}>
           Empezar carrera
         </Button>
       </DialogActions>

@@ -4,7 +4,7 @@ import TableHead from "@mui/material/TableHead";
 import TableBody from "@mui/material/TableBody";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
@@ -13,9 +13,19 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import { colors } from "../theme.js";
+import { colors, cardSx } from "../theme.js";
 import client from "../api/client.js";
 import { formatDuration, formatDateTime } from "../format.js";
+
+const headCell = {
+  color: colors.yellow,
+  fontSize: 12,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  py: "12px",
+  px: "18px",
+};
 
 // Today's rides, newest first. `limit` caps the list; `reloadKey` forces a refetch.
 export default function RideHistory({ limit, reloadKey = 0 }) {
@@ -53,13 +63,13 @@ export default function RideHistory({ limit, reloadKey = 0 }) {
   }
 
   return (
-    <Paper sx={{ overflow: "hidden" }}>
+    <Box sx={cardSx}>
       <Table>
         <TableHead>
           <TableRow sx={{ bgcolor: colors.ink }}>
-            <TableCell sx={{ color: colors.yellow }}>Fecha</TableCell>
-            <TableCell sx={{ color: colors.yellow }}>Duración</TableCell>
-            <TableCell sx={{ color: colors.yellow }} align="right">
+            <TableCell sx={headCell}>Fecha</TableCell>
+            <TableCell sx={headCell}>Duración</TableCell>
+            <TableCell sx={headCell} align="right">
               Importe
             </TableCell>
           </TableRow>
@@ -67,9 +77,9 @@ export default function RideHistory({ limit, reloadKey = 0 }) {
         <TableBody>
           {rides.map((ride) => (
             <TableRow key={ride.id} hover onClick={() => setSelected(ride)} sx={{ cursor: "pointer" }}>
-              <TableCell>{formatDateTime(ride.started_at)}</TableCell>
-              <TableCell>{formatDuration(ride.duration_seconds)}</TableCell>
-              <TableCell align="right" sx={{ color: colors.pinkText, fontWeight: 600 }}>
+              <TableCell sx={{ py: 2, px: "18px" }}>{formatDateTime(ride.started_at)}</TableCell>
+              <TableCell sx={{ py: 2, px: "18px" }}>{formatDuration(ride.duration_seconds)}</TableCell>
+              <TableCell align="right" sx={{ color: colors.pinkText, fontWeight: 600, fontSize: 16, py: 2, px: "18px" }}>
                 {ride.amount.toFixed(2)}€
               </TableCell>
             </TableRow>
@@ -94,6 +104,6 @@ export default function RideHistory({ limit, reloadKey = 0 }) {
           </>
         )}
       </Dialog>
-    </Paper>
+    </Box>
   );
 }
