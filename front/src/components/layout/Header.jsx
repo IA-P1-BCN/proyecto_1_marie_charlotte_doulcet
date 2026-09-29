@@ -3,7 +3,6 @@ import Typography from "@mui/material/Typography";
 import { colors, display } from "../../theme/tokens.js";
 import { diamond } from "../../theme/styles.js";
 
-// Mockup header: ink bar, diamond + wordmark, uppercase tag. `children` = extra right-side controls.
 export default function Header({ children }) {
   return (
     <Box

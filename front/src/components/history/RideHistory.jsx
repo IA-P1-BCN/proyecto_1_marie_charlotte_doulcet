@@ -6,7 +6,6 @@ import { useTodayRides } from "../../hooks/useTodayRides.js";
 import RideDetailDialog from "./RideDetailDialog.jsx";
 import RideTable from "./RideTable.jsx";
 
-// Today's rides; click a row for its detail. `limit` caps the list, `reloadKey` forces a refetch.
 export default function RideHistory({ limit, reloadKey }) {
   const { rides, loading, error } = useTodayRides({ limit, reloadKey });
   const [selected, setSelected] = useState(null);

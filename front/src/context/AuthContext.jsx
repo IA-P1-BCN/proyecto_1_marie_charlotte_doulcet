@@ -3,7 +3,6 @@ import { AUTH_EXPIRED, clearToken, getToken, setToken } from "../services/tokenS
 
 export const AuthContext = createContext(null);
 
-// Owns the session: who is logged in, and reacts when the API says the token is gone.
 export function AuthProvider({ children }) {
   const [token, setTokenState] = useState(getToken);
 

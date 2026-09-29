@@ -3,7 +3,6 @@ import Typography from "@mui/material/Typography";
 import { colors, display } from "../../theme/tokens.js";
 import { formatDuration } from "../../utils/format.js";
 
-// Live fare, elapsed time and current rate.
 export default function RideMeter({ ride }) {
   return (
     <>

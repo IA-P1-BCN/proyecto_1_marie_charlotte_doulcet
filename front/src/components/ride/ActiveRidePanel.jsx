@@ -6,7 +6,6 @@ import RideMeter from "./RideMeter.jsx";
 import StateBadge from "./StateBadge.jsx";
 import { panelSx } from "../../theme/styles.js";
 
-// Presentational: shows the ride in progress (or the "start" panel) and reports user actions upward.
 export default function ActiveRidePanel({ ride, pending, message, onStart, onChangeState, onEnd }) {
   if (!ride) return <NoRidePanel pending={pending} message={message} onStart={onStart} />;
 

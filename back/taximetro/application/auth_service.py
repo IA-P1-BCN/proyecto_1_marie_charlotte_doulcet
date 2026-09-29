@@ -28,7 +28,6 @@ class AuthService:
         company, password = company.strip(), password.strip()
         if not company or not password:
             raise BlankCredentialsError()
-        # Also replaces a password created earlier from the CLI/GUI (same account).
         self._accounts.save(Account(company=company, password_hash=self._hasher.hash(password)))
         logger.info("Account registered")
         return self._tokens.issue()

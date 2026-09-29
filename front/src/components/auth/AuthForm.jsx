@@ -8,7 +8,6 @@ import Typography from "@mui/material/Typography";
 import { colors, display } from "../../theme/tokens.js";
 import { btnMoving, diamond, panelSx } from "../../theme/styles.js";
 
-// `registered` null = still asking the server. false = first connection (password typed twice).
 export default function AuthForm({ registered, error, onSubmit }) {
   const [company, setCompany] = useState("");
   const [password, setPassword] = useState("");

@@ -1,6 +1,5 @@
 import { colors, offset } from "./tokens.js";
 
-// Reusable sx fragments (mockup .panel / .btn / .section-title / .history-card).
 export const panelSx = {
   bgcolor: colors.surface,
   border: `4px solid ${colors.ink}`,

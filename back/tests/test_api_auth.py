@@ -36,7 +36,7 @@ class TestApiAuth(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(self.client.get("/api/auth/status").json(), {"registered": True})
         headers = {"Authorization": f"Bearer {response.json()['token']}"}
-        self.assertEqual(self.client.get("/api/ride", headers=headers).status_code, 404)  # authed, just no ride
+        self.assertEqual(self.client.get("/api/ride", headers=headers).status_code, 404)
 
     def test_setup_twice_returns_409(self):
         self._register()
@@ -50,7 +50,7 @@ class TestApiAuth(unittest.TestCase):
         self.accounts.save(Account(company="", password_hash="fake$vieja"))
         self.assertEqual(self.client.get("/api/auth/status").json(), {"registered": False})
         self.assertEqual(self._register().status_code, 201)
-        self.assertEqual(self._login().status_code, 200)  # new password replaced the old one
+        self.assertEqual(self._login().status_code, 200)
 
     def test_login_wrong_password_returns_401(self):
         self._register()

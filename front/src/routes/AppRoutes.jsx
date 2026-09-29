@@ -5,7 +5,6 @@ import HistoryPage from "../pages/HistoryPage.jsx";
 import RidePage from "../pages/RidePage.jsx";
 import WelcomePage from "../pages/WelcomePage.jsx";
 
-// Logged out: welcome/login on any path. Logged in: the app inside its shell.
 export default function AppRoutes() {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <WelcomePage />;

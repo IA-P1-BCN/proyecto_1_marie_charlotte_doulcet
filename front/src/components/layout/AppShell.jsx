@@ -5,7 +5,6 @@ import Header from "./Header.jsx";
 import LogoutButton from "./LogoutButton.jsx";
 import NavTabs from "./NavTabs.jsx";
 
-// Frame of every authenticated screen: header, tabs, page content (Outlet), footer.
 export default function AppShell() {
   return (
     <>

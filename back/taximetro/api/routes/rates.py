@@ -13,6 +13,5 @@ def get_rates(rides: RideServiceDep) -> RatesDTO:
 
 @router.put("")
 def update_rates(body: RatesRequest, rides: RideServiceDep) -> RatesDTO:
-    # Applies to the next ride: the running one keeps the rates it started with.
     rides.set_rates(Rates(**body.model_dump()))
     return RatesDTO(**rides.rates.to_dict())

@@ -9,7 +9,6 @@ const errorMessage = (status) =>
       ? "El nombre de la empresa y la contraseña no pueden estar vacíos."
       : "Error de conexión. Inténtalo de nuevo.";
 
-// First connection (register, password typed twice) or login — decided by the server's `registered` flag.
 export function useAuthFlow() {
   const { login: startSession } = useAuth();
   const [registered, setRegistered] = useState(null);

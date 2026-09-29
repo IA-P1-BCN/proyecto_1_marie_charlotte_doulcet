@@ -5,7 +5,6 @@ const REFRESH_MS = 1000;
 const GENERIC_ERROR = "Error de conexión. Inténtalo de nuevo.";
 const NO_RIDE = "No hay una carrera en curso.";
 
-// Polls the single ride in progress and exposes the actions that change it.
 export function useActiveRide() {
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,13 +29,10 @@ export function useActiveRide() {
 
   useEffect(() => {
     refresh();
-    // ponytail: a stale poll response can land after a start/state/end action and
-    // overwrite it for up to REFRESH_MS. Add a request counter if that flicker matters.
     const id = setInterval(refresh, REFRESH_MS);
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Runs one action with the shared pending flag; `onError` maps an HTTP status to a message.
   const run = async (action, onSuccess, errorFor) => {
     setPending(true);
     try {
