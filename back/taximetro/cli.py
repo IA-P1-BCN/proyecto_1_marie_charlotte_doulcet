@@ -19,11 +19,19 @@ Q - Salir
 Ingrese un comando:"""
 
 def _setup_new_password():
-    new_password = getpass.getpass("Nueva contraseña: ").strip()
-    while not new_password:
-        print("La contraseña no puede estar vacía.")
+    while True:
         new_password = getpass.getpass("Nueva contraseña: ").strip()
-    save_password_hash(hash_password(new_password))
+        if not new_password:
+            print("La contraseña no puede estar vacía.")
+            continue
+
+        confirm_password = getpass.getpass("Confirme la contraseña: ").strip()
+        if new_password != confirm_password:
+            print("Las contraseñas no coinciden. Intente de nuevo.")
+            continue
+
+        save_password_hash(hash_password(new_password))
+        return
 
 def require_password():
     if not is_password_set():
