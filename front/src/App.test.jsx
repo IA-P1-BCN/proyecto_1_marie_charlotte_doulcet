@@ -6,7 +6,7 @@ import App from "./App.jsx";
 import client from "./api/client.js";
 
 vi.mock("./api/client.js", () => ({
-  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn() },
 }));
 
 function renderAt(path) {
@@ -17,70 +17,118 @@ function renderAt(path) {
   );
 }
 
+const activeRide = {
+  state: "stopped",
+  started_at: "2026-09-17T00:14:00",
+  amount_so_far: 1.5,
+  elapsed_seconds: 75,
+  current_rate: 0.02,
+};
+const ride = {
+  id: 1,
+  started_at: "2026-09-17T00:14:00",
+  ended_at: "2026-09-17T00:28:32",
+  duration_seconds: 872,
+  amount: 12.4,
+};
+
+// Routes GET by url so component fetch order doesn't matter.
+function mockGet({ active = activeRide, rides = [ride] } = {}) {
+  client.get.mockImplementation((url) => {
+    if (url === "/ride") return active ? Promise.resolve({ data: active }) : Promise.reject({ response: { status: 404 } });
+    if (url === "/rides") return Promise.resolve({ data: rides });
+    if (url === "/rates") return Promise.resolve({ data: { stopped_rate: 0.02, moving_rate: 0.05 } });
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe("App", () => {
-  it("renders active ride state and fare from a mocked GET /api/ride", async () => {
-    client.get.mockResolvedValueOnce({
-      data: { state: "moving", started_at: "2026-09-17T00:14:00", amount_so_far: 12.4 },
-    });
-
+  it("renders state, fare, elapsed time and current rate", async () => {
+    mockGet({ active: { ...activeRide, state: "moving", amount_so_far: 12.4, current_rate: 0.05 } });
     renderAt("/");
 
     expect(await screen.findByText("En movimiento")).toBeInTheDocument();
     expect(screen.getByText("12.40 €")).toBeInTheDocument();
+    expect(screen.getByText("00:01:15")).toBeInTheDocument();
+    expect(screen.getByText("0.05 €/s")).toBeInTheDocument();
   });
 
-  it("renders ride history rows from a mocked GET /api/rides", async () => {
-    client.get.mockResolvedValueOnce({
-      data: [
-        {
-          id: 1,
-          started_at: "2026-09-17T00:14:00",
-          ended_at: "2026-09-17T00:28:32",
-          duration_seconds: 872,
-          amount: 12.4,
-        },
-      ],
-    });
+  it("shows today's history under the active ride and opens a ride's detail on click", async () => {
+    mockGet();
+    renderAt("/");
 
+    await userEvent.click(await screen.findByText("12.40€"));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/00:14:32/)).toBeInTheDocument();
+  });
+
+  it("shows only the 10 most recent rides on the active screen", async () => {
+    const rides = Array.from({ length: 12 }, (_, i) => ({
+      ...ride,
+      id: i + 1,
+      started_at: `2026-09-17T10:${String(i).padStart(2, "0")}:00`,
+      amount: i + 1,
+    }));
+    mockGet({ rides });
+    renderAt("/");
+
+    await screen.findByText("12.00€");
+    expect(screen.queryByText("1.00€")).not.toBeInTheDocument();
+    expect(screen.queryByText("2.00€")).not.toBeInTheDocument();
+    expect(screen.getByText("3.00€")).toBeInTheDocument();
+  });
+
+  it("renders the full history page", async () => {
+    mockGet();
     renderAt("/historial");
-
     expect(await screen.findByText("12.40€")).toBeInTheDocument();
-    expect(screen.getByText("00:14:32")).toBeInTheDocument();
   });
 
   it("shows empty-state message when history is []", async () => {
-    client.get.mockResolvedValueOnce({ data: [] });
-
+    mockGet({ rides: [] });
     renderAt("/historial");
-
     await waitFor(() => {
       expect(screen.getByText("No hay carreras registradas hoy.")).toBeInTheDocument();
     });
   });
 
-  const activeRide = { state: "stopped", started_at: "2026-09-17T00:14:00", amount_so_far: 1.5 };
+  it("changes the rates from the dialog", async () => {
+    mockGet({ active: null });
+    client.put.mockResolvedValueOnce({ data: { stopped_rate: 0.03, moving_rate: 0.05 } });
+    renderAt("/");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cambiar tarifa" }));
+    const dialog = await screen.findByRole("dialog");
+    const stopped = within(dialog).getByLabelText("Parado (€/s)");
+    await userEvent.clear(stopped);
+    await userEvent.type(stopped, "0.03");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(client.put).toHaveBeenCalledWith("/rates", { stopped_rate: 0.03, moving_rate: 0.05 }),
+    );
+  });
 
   it("shows a message when the requested state is already the current one", async () => {
-    client.get.mockResolvedValue({ data: activeRide });
+    mockGet();
     client.patch.mockRejectedValueOnce({ response: { status: 409 } });
-
     renderAt("/");
-    await userEvent.click(await screen.findByRole("button", { name: "Parado" }));
 
+    await userEvent.click(await screen.findByRole("button", { name: "Parado" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Ya estás en ese estado.");
   });
 
   it("confirms with an in-app dialog, then returns to the start screen", async () => {
-    client.get.mockResolvedValue({ data: activeRide });
+    mockGet();
     client.post.mockResolvedValueOnce({ data: {} });
-
     renderAt("/");
+
     await userEvent.click(await screen.findByRole("button", { name: "Fin de carrera" }));
     const dialog = await screen.findByRole("dialog");
+    mockGet({ active: null });
     await userEvent.click(within(dialog).getByRole("button", { name: "Finalizar" }));
 
     expect(await screen.findByRole("button", { name: "Iniciar carrera" })).toBeInTheDocument();

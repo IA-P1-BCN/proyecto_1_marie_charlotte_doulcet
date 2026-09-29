@@ -10,8 +10,11 @@ import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
 import { colors } from "../theme.js";
 import client from "../api/client.js";
+import { formatDuration } from "../format.js";
+import RideHistory from "./RideHistory.jsx";
+import RatesDialog from "./RatesDialog.jsx";
 
-const REFRESH_MS = 2000;
+const REFRESH_MS = 1000;
 const GENERIC_ERROR = "Error de conexión. Inténtalo de nuevo.";
 
 export default function ActiveRide() {
@@ -20,6 +23,8 @@ export default function ActiveRide() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [ratesOpen, setRatesOpen] = useState(false);
+  const [endedCount, setEndedCount] = useState(0);
 
   const fetchRide = useCallback(async () => {
     try {
@@ -80,6 +85,7 @@ export default function ActiveRide() {
     try {
       await client.post("/ride/end");
       setRide(null);
+      setEndedCount((n) => n + 1);
       setMessage("Carrera finalizada.");
     } catch (err) {
       setMessage(err.response?.status === 404 ? "No hay una carrera en curso." : GENERIC_ERROR);
@@ -96,8 +102,15 @@ export default function ActiveRide() {
     );
   }
 
-  if (!ride) {
-    return (
+  const isMoving = ride?.state === "moving";
+
+  const ratesButton = (
+    <Button onClick={() => setRatesOpen(true)} sx={{ color: colors.ink }}>
+      Cambiar tarifa
+    </Button>
+  );
+
+  const card = !ride ? (
       <Paper sx={{ p: 4, textAlign: "center" }}>
         <Typography sx={{ mb: 2 }}>Sin carrera activa.</Typography>
         <Button
@@ -108,18 +121,14 @@ export default function ActiveRide() {
         >
           Iniciar carrera
         </Button>
+        <Box sx={{ mt: 1 }}>{ratesButton}</Box>
         {message && (
           <Typography role="status" sx={{ mt: 2 }}>
             {message}
           </Typography>
         )}
       </Paper>
-    );
-  }
-
-  const isMoving = ride.state === "moving";
-
-  return (
+  ) : (
     <Paper sx={{ p: 4 }}>
       <Chip
         label={isMoving ? "En movimiento" : "Parado"}
@@ -128,6 +137,8 @@ export default function ActiveRide() {
       <Typography sx={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 64, color: colors.pinkText }}>
         {ride.amount_so_far.toFixed(2)} €
       </Typography>
+      <Typography>{formatDuration(ride.elapsed_seconds)}</Typography>
+      <Typography>{ride.current_rate} €/s</Typography>
       <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
         <Button variant="outlined" onClick={() => onChangeState("stopped")} disabled={pending} aria-pressed={!isMoving}>
           Parado
@@ -144,6 +155,7 @@ export default function ActiveRide() {
         <Button variant="contained" onClick={() => setConfirmEnd(true)} disabled={pending} sx={{ bgcolor: colors.pinkText }}>
           Fin de carrera
         </Button>
+        {ratesButton}
       </Box>
       {message && (
         <Typography role="status" sx={{ mt: 2 }}>
@@ -160,5 +172,16 @@ export default function ActiveRide() {
         </DialogActions>
       </Dialog>
     </Paper>
+  );
+
+  return (
+    <>
+      {card}
+      <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
+        Historial de hoy
+      </Typography>
+      <RideHistory limit={10} reloadKey={endedCount} />
+      <RatesDialog open={ratesOpen} onClose={() => setRatesOpen(false)} onSaved={fetchRide} />
+    </>
   );
 }
