@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getTodayRides } from "../services/rideService.js";
 
-// Today's rides, newest first. `limit` caps the list; `reloadKey` forces a refetch.
 export function useTodayRides({ limit, reloadKey = 0 } = {}) {
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);

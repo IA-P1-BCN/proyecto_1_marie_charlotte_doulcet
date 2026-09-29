@@ -1,4 +1,3 @@
-// Session token lives in localStorage; wrapped because storage can throw (private mode, blocked site data).
 const KEY = "token";
 
 export const AUTH_EXPIRED = "auth-expired";
@@ -14,15 +13,11 @@ export const getToken = () => {
 export const setToken = (token) => {
   try {
     localStorage.setItem(KEY, token);
-  } catch {
-    /* session just won't survive a reload */
-  }
+  } catch {}
 };
 
 export const clearToken = () => {
   try {
     localStorage.removeItem(KEY);
-  } catch {
-    /* nothing stored */
-  }
+  } catch {}
 };

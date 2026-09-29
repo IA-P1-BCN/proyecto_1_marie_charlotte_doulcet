@@ -14,7 +14,6 @@ import { btnMoving } from "../../theme/styles.js";
 
 const rateInput = { htmlInput: { step: "0.01", min: "0" } };
 
-// Pre-ride step: rates are prefilled with the defaults and only editable here, never mid-ride.
 export default function StartRideDialog({ open, onClose, onStart }) {
   const { rates, error: loadError } = useDefaultRates(open);
   const [stopped, setStopped] = useState("");

@@ -1,6 +1,3 @@
-// Design tokens from docs/mockups/web-panel.html ("neon-checker pop").
-// pink (#FF4D6D) is large/decorative only (fails AA at normal text size);
-// pinkText (#D6294B) is the text/fill-safe value — see DESIGN.md contrast table.
 export const colors = {
   ink: "#191510",
   yellow: "#FFC629",

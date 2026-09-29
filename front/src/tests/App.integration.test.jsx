@@ -32,7 +32,6 @@ const ride = {
   amount: 12.4,
 };
 
-// Routes GET by url so component fetch order doesn't matter.
 function mockGet({ active = activeRide, rides = [ride], registered = true } = {}) {
   client.get.mockImplementation((url) => {
     if (url === "/auth/status") return Promise.resolve({ data: { registered } });

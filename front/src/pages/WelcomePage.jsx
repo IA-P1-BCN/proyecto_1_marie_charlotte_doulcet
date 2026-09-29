@@ -4,7 +4,6 @@ import Footer from "../components/layout/Footer.jsx";
 import Header from "../components/layout/Header.jsx";
 import { useAuthFlow } from "../hooks/useAuthFlow.js";
 
-// One account per install: first connection registers it, afterwards it is a plain login.
 export default function WelcomePage() {
   const { registered, error, submit } = useAuthFlow();
   return (

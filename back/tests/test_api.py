@@ -97,5 +97,6 @@ class TestApi(unittest.TestCase):
         response = self.client.post("/api/ride/start", json={"stopped_rate": -1, "moving_rate": 0.2})
         self.assertEqual(response.status_code, 422)
 
+
 if __name__ == '__main__':
     unittest.main()

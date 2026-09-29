@@ -9,7 +9,6 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// A 401 outside the auth endpoints means the token is gone (e.g. server restarted): back to login.
 client.interceptors.response.use(
   (response) => response,
   (error) => {
