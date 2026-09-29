@@ -1,19 +1,17 @@
-import os
-import tempfile
 import unittest
-from unittest.mock import patch
 from fastapi.testclient import TestClient
-from taximetro.api import app, get_session, require_auth
+from taximetro.api import app
+from taximetro.api.dependencies import get_ride_service, require_auth
+from taximetro.application.ride_service import RideService
 from taximetro.domain.rates import Rates
-from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
-from taximetro.ride_session import RideSession
+from tests.fakes import InMemoryRatesRepository, InMemoryRideRepository
+
 
 class TestApi(unittest.TestCase):
     def setUp(self):
-        rates = Rates(stopped_rate=0.02, moving_rate=0.05)
-        db_path = os.path.join(tempfile.mkdtemp(), "test_api.db")
-        self.session = RideSession(rates, SqliteRideRepository(db_path))
-        app.dependency_overrides[get_session] = lambda: self.session
+        self.rates_repository = InMemoryRatesRepository(Rates(stopped_rate=0.02, moving_rate=0.05))
+        self.session = RideService(self.rates_repository, InMemoryRideRepository())
+        app.dependency_overrides[get_ride_service] = lambda: self.session
         app.dependency_overrides[require_auth] = lambda: None
         self.client = TestClient(app)
 
@@ -60,16 +58,16 @@ class TestApi(unittest.TestCase):
         self.assertEqual(response.json(), {"stopped_rate": 0.02, "moving_rate": 0.05})
 
     def test_put_rates_updates_session_and_persists(self):
-        with patch("taximetro.ride_session.save_rates") as save:
-            response = self.client.put("/api/rates", json={"stopped_rate": 0.03, "moving_rate": 0.06})
+        response = self.client.put("/api/rates", json={"stopped_rate": 0.03, "moving_rate": 0.06})
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"stopped_rate": 0.03, "moving_rate": 0.06})
         self.assertEqual(self.session.rates, Rates(stopped_rate=0.03, moving_rate=0.06))
-        self.assertTrue(save.called)
+        self.assertEqual(self.rates_repository.saved, [Rates(stopped_rate=0.03, moving_rate=0.06)])
 
     def test_put_rates_rejects_non_positive(self):
-        with patch("taximetro.ride_session.save_rates"):
-            response = self.client.put("/api/rates", json={"stopped_rate": 0, "moving_rate": 0.06})
+        response = self.client.put("/api/rates", json={"stopped_rate": 0, "moving_rate": 0.06})
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.rates_repository.saved, [])
 
     def test_start_with_custom_rates_applies_to_that_ride_only(self):
         response = self.client.post("/api/ride/start", json={"stopped_rate": 0.1, "moving_rate": 0.2})

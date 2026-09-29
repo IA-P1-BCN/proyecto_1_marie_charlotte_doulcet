@@ -1,26 +1,24 @@
-import os
-import tempfile
 import unittest
-from unittest.mock import patch
 from fastapi.testclient import TestClient
-from taximetro import api
-from taximetro.api import app, get_session
-from taximetro.ride_session import RideSession
+from taximetro.api import app
+from taximetro.api.dependencies import get_auth_service, get_ride_service
+from taximetro.application.auth_service import AuthService
+from taximetro.application.ride_service import RideService
+from taximetro.application.token_store import TokenStore
+from taximetro.domain.account import Account
 from taximetro.domain.rates import Rates
-from taximetro.infrastructure.sqlite_ride_repository import SqliteRideRepository
-from taximetro.infrastructure.auth import hash_password, save_password_hash
+from tests.fakes import (
+    FakePasswordHasher, InMemoryAccountRepository, InMemoryRatesRepository, InMemoryRideRepository,
+)
 
 
 class TestApiAuth(unittest.TestCase):
     def setUp(self):
-        self.tmp_dir = tempfile.mkdtemp()
-        self.auth_path = os.path.join(self.tmp_dir, "auth.ini")
-        patcher = patch.object(api, "AUTH_PATH", self.auth_path)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-        api._tokens.clear()
-        session = RideSession(Rates(stopped_rate=0.02, moving_rate=0.05), SqliteRideRepository(os.path.join(self.tmp_dir, "t.db")))
-        app.dependency_overrides[get_session] = lambda: session
+        self.accounts = InMemoryAccountRepository()
+        auth = AuthService(self.accounts, FakePasswordHasher(), TokenStore())
+        rides = RideService(InMemoryRatesRepository(Rates(stopped_rate=0.02, moving_rate=0.05)), InMemoryRideRepository())
+        app.dependency_overrides[get_auth_service] = lambda: auth
+        app.dependency_overrides[get_ride_service] = lambda: rides
         self.addCleanup(app.dependency_overrides.clear)
         self.client = TestClient(app)
 
@@ -49,7 +47,7 @@ class TestApiAuth(unittest.TestCase):
         self.assertEqual(self._register("Taxis Sol", "   ").status_code, 422)
 
     def test_password_from_cli_without_company_counts_as_not_registered(self):
-        save_password_hash(hash_password("vieja"), self.auth_path)
+        self.accounts.save(Account(company="", password_hash="fake$vieja"))
         self.assertEqual(self.client.get("/api/auth/status").json(), {"registered": False})
         self.assertEqual(self._register().status_code, 201)
         self.assertEqual(self._login().status_code, 200)  # new password replaced the old one
