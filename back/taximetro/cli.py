@@ -1,11 +1,10 @@
-import time
 import logging
 import getpass
-from taximetro.domain.ride import Ride
 from taximetro.infrastructure.storage.file_storage import FileStorage
 from taximetro.infrastructure.logging_setup import configure_logging
-from taximetro.infrastructure.rates_config import load_rates, save_rates
+from taximetro.infrastructure.rates_config import load_rates
 from taximetro.infrastructure.auth import (hash_password, check_password, is_password_set, save_password_hash, load_password_hash,)
+from taximetro.ride_session import RideSession, NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
 
 MENU = """
 ========== TAXIMETRO =========
@@ -17,6 +16,9 @@ H - Ver historial de hoy
 T - Cambiar tarifa
 Q - Salir
 Ingrese un comando:"""
+
+ESTADO_ES = {"moving": "en movimiento", "stopped": "parado"}
+ESTADO_NOMBRE = {"moving": "movimiento", "stopped": "parado"}
 
 def _setup_new_password():
     while True:
@@ -47,7 +49,7 @@ def require_password():
         _setup_new_password()
         logging.info("Password reset after corrupted hash")
         return
-    
+
     while True:
         try:
             password = getpass.getpass("Contraseña (Q para salir): ").strip()
@@ -58,9 +60,9 @@ def require_password():
             logging.info("User exited at password prompt")
             print("Saliendo del taxímetro. ¡Hasta luego!")
             raise SystemExit(0)
-        
+
         if check_password(password, stored_hash):
-            return 
+            return
         print("Contraseña incorrecta. Intente de nuevo.")
 
 def main():
@@ -75,8 +77,7 @@ def main():
         print("No se pudo cargar la configuración de tarifas. Revise config.ini.")
         return
 
-    storage = FileStorage()
-    current_ride = None
+    session = RideSession(rates, FileStorage())
 
     while True:
         print(MENU)
@@ -84,42 +85,29 @@ def main():
 
         try:
             if command == "N":
-                if current_ride is not None:
+                try:
+                    session.start_ride()
+                    print("Carrera iniciada. Estado: parado.")
+                except RideAlreadyActiveError:
                     print("Ya hay una carrera en curso.")
-                    continue
-
-                current_ride = Ride(rates)
-                print("Carrera iniciada. Estado: parado.")
 
             elif command in ["M", "P"]:
-                if current_ride is None:
-                    print("No hay una carrera en curso. Inicie una carrera primero.")
-                    continue
-
                 new_state = {"M": "moving", "P": "stopped"}[command]
-                estado_es = "en movimiento" if new_state == "moving" else "parado"
-                estado_nombre = "movimiento" if new_state == "moving" else "parado"
-
-                if current_ride.state == new_state:
-                    print(f"Ya estás en modo {estado_nombre}. Puedes cambiar de estado o finalizar la carrera (F).")
-                    continue
-
-                current_ride.toggle_state(new_state)
-                logging.info("State changed to %s", new_state)
-                print(f"Estado cambiado a: {estado_es}.")
+                try:
+                    session.change_state(new_state)
+                    print(f"Estado cambiado a: {ESTADO_ES[new_state]}.")
+                except NoActiveRideError:
+                    print("No hay una carrera en curso. Inicie una carrera primero.")
+                except AlreadyInStateError:
+                    print(f"Ya estás en modo {ESTADO_NOMBRE[new_state]}. Puedes cambiar de estado o finalizar la carrera (F).")
 
             elif command == "F":
-                if current_ride is None:
+                try:
+                    ride = session.end_ride()
+                    logging.info("Ride ended, duration=%ss, total=%s", ride.get_duration_seconds(), ride.format_total())
+                    print(f"Carrera finalizada. Total a pagar: {ride.format_total()} €")
+                except NoActiveRideError:
                     print("No hay una carrera en curso. Inicie una carrera primero.")
-                    continue
-
-                total = current_ride.end()
-                duration_seconds = current_ride.get_duration_seconds()
-                logging.info("Ride ended, duration=%ss, total=%s", duration_seconds, current_ride.format_total())
-                print(f"Carrera finalizada. Total a pagar: {current_ride.format_total()} €")
-
-                storage.save_ride(current_ride)
-                current_ride = None
 
             elif command == "T":
                 tarifa_input = input("¿Qué tarifa? (P = parado, M = en movimiento): ").strip().upper()
@@ -132,18 +120,16 @@ def main():
 
                 try:
                     new_value = float(new_value_input)
-                    updated_rates = {**rates, rate_key: new_value}
-                    save_rates(updated_rates)
+                    session.change_rate(rate_key, new_value)
                 except ValueError:
                     print("Valor no válido. Debe ser un número positivo. La tarifa actual no ha cambiado.")
                     continue
 
-                rates = updated_rates
                 logging.info("Rate changed: %s = %s", rate_key, new_value)
                 print(f"Tarifa actualizada: {rate_key} = {new_value} €/segundo")
 
             elif command == "Q":
-                if current_ride is not None:
+                if session.has_active_ride:
                     print("Finalice carrera antes de salir...")
                     continue
 
@@ -151,7 +137,7 @@ def main():
                 return
 
             elif command == "H":
-                rides = storage.load_today()
+                rides = session.get_today_history()
                 if not rides:
                     print("No hay carreras registradas para hoy.")
                 else:
