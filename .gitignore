@@ -12,6 +12,7 @@ back/rides_history.csv
 # Front
 front/node_modules/
 front/dist/
+front/.vite/
 
 # Personal study guides — kept local, never pushed
 docs/guide/
