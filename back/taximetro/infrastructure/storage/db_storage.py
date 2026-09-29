@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS rides (
 class DbStorage(Storage):
     def __init__(self, db_path="taximetro.db"):
         self.db_path = db_path
+        self.last_inserted_id = None
         with closing(sqlite3.connect(self.db_path)) as conn:
             with conn:
                 conn.execute(SCHEMA)
@@ -26,10 +27,11 @@ class DbStorage(Storage):
         ended_at = datetime.fromtimestamp(ride.ended_at).isoformat()
         with closing(sqlite3.connect(self.db_path)) as conn:
             with conn:
-                conn.execute(
+                cursor = conn.execute(
                     "INSERT INTO rides (started_at, ended_at, duration_seconds, amount) VALUES (?, ?, ?, ?)",
                     (started_at, ended_at, ride.get_duration_seconds(), round(ride.accumulated, 2)),
                 )
+                self.last_inserted_id = cursor.lastrowid
 
     def load_today(self):
         today_str = date.today().isoformat()
