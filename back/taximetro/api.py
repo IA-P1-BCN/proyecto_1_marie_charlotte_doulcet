@@ -58,7 +58,7 @@ def change_state(body: ChangeStateRequest, session: RideSession = Depends(get_se
     except NoActiveRideError:
         raise HTTPException(status_code=404, detail="No active ride")
     except AlreadyInStateError:
-        pass
+        raise HTTPException(status_code=409, detail=f"Ride is already {body.state}")
     return _active_ride_dto(session.current_ride)
 
 @app.post("/api/ride/end")

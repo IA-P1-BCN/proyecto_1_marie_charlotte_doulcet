@@ -42,5 +42,10 @@ class TestApi(unittest.TestCase):
         response = self.client.patch("/api/ride/state", json={"state": "moving"})
         self.assertEqual(response.status_code, 404)
 
+    def test_same_state_returns_409(self):
+        self.client.post("/api/ride/start")
+        response = self.client.patch("/api/ride/state", json={"state": "stopped"})
+        self.assertEqual(response.status_code, 409)
+
 if __name__ == '__main__':
     unittest.main()

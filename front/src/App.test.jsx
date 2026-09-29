@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import App from "./App.jsx";
@@ -59,5 +60,30 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByText("No hay carreras registradas hoy.")).toBeInTheDocument();
     });
+  });
+
+  const activeRide = { state: "stopped", started_at: "2026-09-17T00:14:00", amount_so_far: 1.5 };
+
+  it("shows a message when the requested state is already the current one", async () => {
+    client.get.mockResolvedValue({ data: activeRide });
+    client.patch.mockRejectedValueOnce({ response: { status: 409 } });
+
+    renderAt("/");
+    await userEvent.click(await screen.findByRole("button", { name: "Parado" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Ya estás en ese estado.");
+  });
+
+  it("confirms with an in-app dialog, then returns to the start screen", async () => {
+    client.get.mockResolvedValue({ data: activeRide });
+    client.post.mockResolvedValueOnce({ data: {} });
+
+    renderAt("/");
+    await userEvent.click(await screen.findByRole("button", { name: "Fin de carrera" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Finalizar" }));
+
+    expect(await screen.findByRole("button", { name: "Iniciar carrera" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Carrera finalizada.");
   });
 });
