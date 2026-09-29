@@ -33,8 +33,9 @@ const ride = {
 };
 
 // Routes GET by url so component fetch order doesn't matter.
-function mockGet({ active = activeRide, rides = [ride] } = {}) {
+function mockGet({ active = activeRide, rides = [ride], passwordSet = true } = {}) {
   client.get.mockImplementation((url) => {
+    if (url === "/auth/status") return Promise.resolve({ data: { password_set: passwordSet } });
     if (url === "/ride") return active ? Promise.resolve({ data: active }) : Promise.reject({ response: { status: 404 } });
     if (url === "/rides") return Promise.resolve({ data: rides });
     if (url === "/rates") return Promise.resolve({ data: { stopped_rate: 0.02, moving_rate: 0.05 } });
@@ -43,6 +44,7 @@ function mockGet({ active = activeRide, rides = [ride] } = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.setItem("token", "t"); // logged in by default
 });
 
 describe("App", () => {
@@ -168,5 +170,60 @@ describe("App", () => {
 
     expect(await screen.findByRole("button", { name: "Iniciar carrera" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Carrera finalizada.");
+  });
+
+  describe("auth", () => {
+    beforeEach(() => localStorage.removeItem("token"));
+
+    it("asks for the password when logged out, then shows the app", async () => {
+      mockGet();
+      client.post.mockResolvedValueOnce({ data: { token: "abc" } });
+      renderAt("/");
+
+      await userEvent.type(await screen.findByLabelText("Contraseña"), "secreto123");
+      await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+      expect(client.post).toHaveBeenCalledWith("/auth/login", { password: "secreto123" });
+      expect(await screen.findByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
+      expect(localStorage.getItem("token")).toBe("abc");
+    });
+
+    it("shows an error on a wrong password", async () => {
+      mockGet();
+      client.post.mockRejectedValueOnce({ response: { status: 401 } });
+      renderAt("/");
+
+      await userEvent.type(await screen.findByLabelText("Contraseña"), "mala");
+      await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Contraseña incorrecta.");
+    });
+
+    it("offers to create the password on first use and checks the confirmation", async () => {
+      mockGet({ passwordSet: false });
+      client.post.mockResolvedValueOnce({ data: { token: "abc" } });
+      renderAt("/");
+
+      await userEvent.type(await screen.findByLabelText("Contraseña"), "secreto123");
+      await userEvent.type(screen.getByLabelText("Confirmar contraseña"), "distinta");
+      await userEvent.click(screen.getByRole("button", { name: "Crear contraseña" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Las contraseñas no coinciden.");
+      expect(client.post).not.toHaveBeenCalled();
+
+      await userEvent.clear(screen.getByLabelText("Confirmar contraseña"));
+      await userEvent.type(screen.getByLabelText("Confirmar contraseña"), "secreto123");
+      await userEvent.click(screen.getByRole("button", { name: "Crear contraseña" }));
+      expect(client.post).toHaveBeenCalledWith("/auth/setup", { password: "secreto123" });
+    });
+  });
+
+  it("logs out from the app bar", async () => {
+    mockGet();
+    renderAt("/");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+
+    expect(await screen.findByLabelText("Contraseña")).toBeInTheDocument();
+    expect(localStorage.getItem("token")).toBeNull();
   });
 });
