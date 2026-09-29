@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getToken, clearToken, AUTH_EXPIRED } from "../auth.js";
+import { getToken, clearToken, AUTH_EXPIRED } from "./tokenStorage.js";
 
 const client = axios.create({ baseURL: "/api" });
 

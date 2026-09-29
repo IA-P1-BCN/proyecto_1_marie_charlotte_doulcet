@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import { colors, display, diamond } from "../theme.js";
+import { colors, display } from "../../theme/tokens.js";
+import { diamond } from "../../theme/styles.js";
 
 // Mockup header: ink bar, diamond + wordmark, uppercase tag. `children` = extra right-side controls.
 export default function Header({ children }) {
@@ -47,16 +48,5 @@ export default function Header({ children }) {
         {children}
       </Box>
     </Box>
-  );
-}
-
-export function Footer() {
-  return (
-    <Typography
-      component="footer"
-      sx={{ textAlign: "center", p: 4, fontSize: 11, color: colors.muted, letterSpacing: "0.1em", textTransform: "uppercase" }}
-    >
-      TaxiTech Solutions · Digital Taximeter
-    </Typography>
   );
 }
