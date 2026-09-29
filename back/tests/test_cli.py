@@ -46,6 +46,27 @@ class TestCliLoop(unittest.TestCase):
         self.assertIn("no coinciden", output.getvalue())
         mock_hash.assert_called_once_with("secreto123")
         mock_save.assert_called_once_with("salt$digest")
+    @patch("taximetro.cli.require_password", return_value=None)
+    @patch("builtins.input", side_effect=["N", "P", "Q"])
+    def test_p_when_already_stopped_shows_already_in_state_message(self, mock_input, mock_require_password):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            try:
+                main()
+            except StopIteration:
+                pass
+        self.assertIn("Ya estás en modo parado", output.getvalue())
+
+    @patch("taximetro.cli.require_password", return_value=None)
+    @patch("builtins.input", side_effect=["N", "M", "M", "Q"])
+    def test_m_when_already_moving_shows_already_in_state_message(self, mock_input, mock_require_password):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            try:
+                main()
+            except StopIteration:
+                pass
+        self.assertIn("Ya estás en modo movimiento", output.getvalue())
 
 if __name__ == '__main__':
     unittest.main()
