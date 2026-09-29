@@ -15,11 +15,6 @@ class TestPbkdf2PasswordHasher(unittest.TestCase):
     def test_same_password_hashes_differently_thanks_to_the_salt(self):
         self.assertNotEqual(self.hasher.hash("secreto123"), self.hasher.hash("secreto123"))
 
-    def test_is_valid_hash_rejects_malformed_values(self):
-        self.assertTrue(self.hasher.is_valid_hash(self.hasher.hash("x")))
-        self.assertFalse(self.hasher.is_valid_hash("not-a-hash"))
-        self.assertFalse(self.hasher.is_valid_hash(""))
-
     def test_verify_malformed_hash_is_false_instead_of_crashing(self):
         self.assertFalse(self.hasher.verify("x", "not-a-hash"))
 

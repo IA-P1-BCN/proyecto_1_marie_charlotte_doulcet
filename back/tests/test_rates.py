@@ -31,15 +31,6 @@ class TestRates(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     Rates(stopped_rate=0.02, moving_rate=bad)
 
-    def test_with_rate_returns_a_new_object_and_leaves_the_original(self):
-        updated = self.rates.with_rate("moving_rate", 0.1)
-        self.assertEqual(updated, Rates(stopped_rate=0.02, moving_rate=0.1))
-        self.assertEqual(self.rates.moving_rate, 0.05)
-
-    def test_with_rate_unknown_key_raises(self):
-        with self.assertRaises(ValueError):
-            self.rates.with_rate("nope_rate", 0.1)
-
     def test_rates_are_immutable(self):
         with self.assertRaises(FrozenInstanceError):
             self.rates.moving_rate = 1.0

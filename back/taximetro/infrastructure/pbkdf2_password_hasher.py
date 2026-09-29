@@ -13,12 +13,13 @@ class Pbkdf2PasswordHasher:
         return f"{salt}${self._digest(password, salt)}"
 
     def verify(self, password, stored_hash):
-        if not self.is_valid_hash(stored_hash):
+        if not self._is_well_formed(stored_hash):
             return False
         salt, _, digest = stored_hash.partition("$")
         return hmac.compare_digest(self._digest(password, salt), digest)
 
-    def is_valid_hash(self, stored_hash):
+    @staticmethod
+    def _is_well_formed(stored_hash):
         salt, separator, digest = stored_hash.partition("$")
         try:
             bytes.fromhex(salt)

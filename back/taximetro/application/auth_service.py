@@ -8,14 +8,13 @@ def _normalize(company):
 
 
 class AuthService:
-    """Single-account authentication shared by the web panel (company + password) and the console (password)."""
+    """Single-account authentication for the web panel: company + password, session token."""
 
     def __init__(self, accounts, hasher, tokens):
         self._accounts = accounts
         self._hasher = hasher
         self._tokens = tokens
 
-    # --- web panel ---
     def is_registered(self):
         account = self._accounts.get()
         return account is not None and account.is_registered
@@ -42,21 +41,3 @@ class AuthService:
 
     def is_valid_token(self, token):
         return self._tokens.is_valid(token)
-
-    # --- console (CLI) ---
-    def has_password(self):
-        account = self._accounts.get()
-        return account is not None and bool(account.password_hash)
-
-    def has_usable_password(self):
-        account = self._accounts.get()
-        return account is not None and self._hasher.is_valid_hash(account.password_hash)
-
-    def verify_password(self, password):
-        account = self._accounts.get()
-        return account is not None and self._hasher.verify(password, account.password_hash)
-
-    def set_password(self, password):
-        account = self._accounts.get()
-        company = account.company if account else ""
-        self._accounts.save(Account(company=company, password_hash=self._hasher.hash(password)))

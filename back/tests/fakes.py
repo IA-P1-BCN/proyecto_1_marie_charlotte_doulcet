@@ -60,6 +60,3 @@ class FakePasswordHasher:
 
     def verify(self, password, stored_hash):
         return stored_hash == f"fake${password}"
-
-    def is_valid_hash(self, stored_hash):
-        return "$" in stored_hash

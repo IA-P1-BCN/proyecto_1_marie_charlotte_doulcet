@@ -38,15 +38,9 @@ class RideService:
         self.current_ride = None
         return record
 
-    def change_rate(self, rate_key, new_value):
-        self.set_rates(self.rates.with_rate(rate_key, new_value))
-
     def set_rates(self, rates):
         self._rates_repository.save(rates)
         self.rates = rates
-
-    def get_today_history(self):
-        return self.get_history(date.today())
 
     def get_history(self, day):
         return self._ride_repository.find_by_date(day)

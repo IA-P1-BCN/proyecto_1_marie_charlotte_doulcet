@@ -1,3 +1,4 @@
+from datetime import date
 import unittest
 from taximetro.domain.errors import NoActiveRideError, RideAlreadyActiveError, AlreadyInStateError
 from taximetro.domain.rates import Rates
@@ -55,19 +56,13 @@ class TestRideService(unittest.TestCase):
         record = self.session.end_ride()
         self.assertFalse(self.session.has_active_ride)
         self.assertIsInstance(record, RideRecord)
-        self.assertEqual(self.session.get_today_history(), [record])
+        self.assertEqual(self.session.get_history(date.today()), [record])
 
     def test_get_ride_returns_a_saved_record_or_none(self):
         self.session.start_ride()
         record = self.session.end_ride()
         self.assertEqual(self.session.get_ride(record.id), record)
         self.assertIsNone(self.session.get_ride(999))
-
-    def test_change_rate_updates_rates_and_persists(self):
-        self.session.change_rate("moving_rate", 0.1)
-        expected = Rates(stopped_rate=0.02, moving_rate=0.1)
-        self.assertEqual(self.session.rates, expected)
-        self.assertEqual(self.rates_repository.saved, [expected])
 
     def test_set_rates_replaces_both_rates_and_persists_once(self):
         new_rates = Rates(stopped_rate=0.03, moving_rate=0.06)

@@ -31,7 +31,7 @@ class TestApi(unittest.TestCase):
         self.assertEqual(end_response.status_code, 200)
         body = end_response.json()
         self.assertIn("id", body)
-        self.assertAlmostEqual(body["amount"], self.session.get_today_history()[0].amount)
+        self.assertAlmostEqual(body["amount"], self.session.get_ride(body["id"]).amount)
 
     def test_start_twice_returns_409(self):
         self.client.post("/api/ride/start")

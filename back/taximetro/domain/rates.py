@@ -18,10 +18,5 @@ class Rates:
     def rate_for(self, state):
         return getattr(self, f"{RideState(state).value}_rate")
 
-    def with_rate(self, key, value):
-        if key not in {field.name for field in fields(self)}:
-            raise ValueError(f"Unknown rate: {key}")
-        return replace(self, **{key: value})
-
     def to_dict(self):
         return asdict(self)

@@ -59,24 +59,6 @@ class TestAuthService(unittest.TestCase):
     def test_invalid_token_is_rejected(self):
         self.assertFalse(self.service.is_valid_token("nope"))
 
-    def test_console_password_flow_verify_and_set(self):
-        self.assertFalse(self.service.has_password())
-        self.service.set_password("secreto123")
-        self.assertTrue(self.service.has_password())
-        self.assertTrue(self.service.verify_password("secreto123"))
-        self.assertFalse(self.service.verify_password("mala"))
-
-    def test_set_password_keeps_the_registered_company(self):
-        self.service.register("Taxis Sol", "secreto123")
-        self.service.set_password("nueva")
-        self.assertTrue(self.service.is_registered())
-        self.assertTrue(self.service.login("Taxis Sol", "nueva"))
-
-    def test_has_usable_password_is_false_for_a_malformed_hash(self):
-        self.accounts.save(Account(company="", password_hash="garbage"))
-        self.assertTrue(self.service.has_password())
-        self.assertFalse(self.service.has_usable_password())
-
 
 if __name__ == "__main__":
     unittest.main()
